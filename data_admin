@@ -1,0 +1,8 @@
+INSERT INTO users (name, email, nim_nip, password, role)
+VALUES (
+  'admin',
+  '-',
+  NULL,
+  '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', -- password: password
+  'admin'
+);
