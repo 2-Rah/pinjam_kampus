@@ -81,7 +81,7 @@ button{width:100%;padding:10px;border:0;background:#2b8aef;color:#fff;border-rad
     </form>
 
     <p style="text-align:center;margin-top:10px;">
-        Sudah punya akun? <a href="user_login.php">Login di sini</a>
+        Sudah punya akun? <a href="user/user_login.php">Login di sini</a>
     </p>
 </div>
 </body>
