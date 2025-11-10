@@ -22,6 +22,8 @@ if (!isset($_SESSION['admin_id'])) {
         <li><a href="admin_login.php">Halaman Login</a></li>
         <li><a href="logout_admin.php">Logout</a></li>
         <li><a href="admin_manage_role.php">Registrasi user</a></li>
+        <li><a href="admin_manage_borrowings.php">peminjaman barang</a></li>
+        <li><a href="admin_manage_items.php">atur barang</a></li>
     </ul>
 </body>
 </html>
