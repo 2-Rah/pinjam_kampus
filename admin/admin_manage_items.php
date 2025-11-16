@@ -7,27 +7,34 @@ if (!isset($_SESSION['admin_id'])) {
     exit;
 }
 
+/**
+ * Admin Manage Items
+ * - Tambah, update, delete item
+ * - Delete akan dicek dulu apakah ada dependency di borrowing_details
+ */
+
 // Handle tambah item
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
-    $name = $_POST['name'];
+    $name = trim($_POST['name']);
     $type = $_POST['type'];
-    $category = $_POST['category'];
+    $category = trim($_POST['category']);
     $stock = $type === 'barang' ? (int)$_POST['stock'] : 1;
     $capacity = $type === 'ruangan' ? (int)$_POST['capacity'] : null;
-    $description = $_POST['description'];
+    $description = trim($_POST['description']);
 
     // upload image
     $image_name = null;
     if (!empty($_FILES['image']['name'])) {
-        $image_name = time() . "_" . basename($_FILES['image']['name']);
+        $image_name = time() . "_" . preg_replace('/[^A-Za-z0-9_\-\.]/', '_', basename($_FILES['image']['name']));
         move_uploaded_file($_FILES['image']['tmp_name'], "../gambar_item/" . $image_name);
     }
 
     $stmt = $conn->prepare("INSERT INTO items (name, type, category, stock, capacity, description, image) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("sssisss", $name, $type, $category, $stock, $capacity, $description, $image_name);
-
     if ($stmt->execute()) {
         echo "<script>alert('Item berhasil ditambahkan!');</script>";
+    } else {
+        echo "<script>alert('Gagal menambah item: " . addslashes($stmt->error) . "');</script>";
     }
     $stmt->close();
 }
@@ -35,39 +42,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
 // Handle update item
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_item'])) {
     $id = (int)$_POST['id'];
-    $name = $_POST['name'];
-    $category = $_POST['category'];
+    $name = trim($_POST['name']);
+    $category = trim($_POST['category']);
     $stock = isset($_POST['stock']) ? (int)$_POST['stock'] : 1;
-    $capacity = isset($_POST['capacity']) ? (int)$_POST['capacity'] : null;
-    $description = $_POST['description'];
+    $capacity = isset($_POST['capacity']) && $_POST['capacity'] !== '' ? (int)$_POST['capacity'] : null;
+    $description = trim($_POST['description']);
     $is_active = isset($_POST['is_active']) ? 1 : 0;
 
     // handle image update
-    $image_sql = "";
+    $image_name = null;
     if (!empty($_FILES['image']['name'])) {
-        $filename = time() . "_" . basename($_FILES['image']['name']);
-        move_uploaded_file($_FILES['image']['tmp_name'], "../gambar_item/" . $filename);
-        $image_sql = ", image='$filename'";
+        $image_name = time() . "_" . preg_replace('/[^A-Za-z0-9_\-\.]/', '_', basename($_FILES['image']['name']));
+        move_uploaded_file($_FILES['image']['tmp_name'], "../gambar_item/" . $image_name);
     }
 
-    $stmt = $conn->prepare("UPDATE items SET name=?, category=?, stock=?, capacity=?, description=?, is_active=? $image_sql WHERE id=?");
-    $stmt->bind_param("ssiisii", $name, $category, $stock, $capacity, $description, $is_active, $id);
+    if ($image_name !== null) {
+        // include image in update
+        $stmt = $conn->prepare("UPDATE items SET name=?, category=?, stock=?, capacity=?, description=?, is_active=?, image=? WHERE id=?");
+        $stmt->bind_param("ssiisisi", $name, $category, $stock, $capacity, $description, $is_active, $image_name, $id);
+    } else {
+        // without image
+        $stmt = $conn->prepare("UPDATE items SET name=?, category=?, stock=?, capacity=?, description=?, is_active=? WHERE id=?");
+        $stmt->bind_param("ssiisii", $name, $category, $stock, $capacity, $description, $is_active, $id);
+    }
 
     if ($stmt->execute()) {
         echo "<script>alert('Item berhasil diupdate!');</script>";
+    } else {
+        echo "<script>alert('Gagal update item: " . addslashes($stmt->error) . "');</script>";
     }
     $stmt->close();
 }
 
-// Handle delete item
+// Handle delete item (dengan pengecekan FK)
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    $stmt = $conn->prepare("DELETE FROM items WHERE id=?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $stmt->close();
-    header('Location: admin_manage_items.php');
-    exit;
+
+    // cek apakah item direferensi di borrowing_details
+    $chk = $conn->prepare("SELECT COUNT(*) AS cnt FROM borrowing_details WHERE item_id = ?");
+    $chk->bind_param("i", $id);
+    $chk->execute();
+    $cnt = $chk->get_result()->fetch_assoc()['cnt'] ?? 0;
+    $chk->close();
+
+    if ($cnt > 0) {
+        // item masih dipakai, batalkan penghapusan
+        echo "<script>alert('Tidak bisa menghapus item ini karena masih digunakan di peminjaman. Hapus dependensi peminjaman terlebih dahulu.'); window.location.href='admin_manage_items.php';</script>";
+        exit;
+    } else {
+        // ambil nama file gambar (untuk dihapus dari server jika ada)
+        $g = $conn->prepare("SELECT image FROM items WHERE id = ?");
+        $g->bind_param("i", $id);
+        $g->execute();
+        $resg = $g->get_result()->fetch_assoc();
+        $g->close();
+
+        // hapus record
+        $stmt = $conn->prepare("DELETE FROM items WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        if ($stmt->execute()) {
+            // jika ada file gambar, hapus file fisik
+            if (!empty($resg['image']) && file_exists("../gambar_item/" . $resg['image'])) {
+                @unlink("../gambar_item/" . $resg['image']);
+            }
+            header('Location: admin_manage_items.php');
+            exit;
+        } else {
+            echo "<script>alert('Gagal menghapus item: " . addslashes($stmt->error) . "'); window.location.href='admin_manage_items.php';</script>";
+            exit;
+        }
+    }
 }
 
 // Ambil semua items
@@ -80,6 +124,7 @@ $items = mysqli_query($conn, "SELECT * FROM items ORDER BY type, category, name"
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kelola Barang & Ruangan - Admin</title>
 <style>
+/* (style sama seperti sebelumnya) */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
 .navbar { background: #2c3e50; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
