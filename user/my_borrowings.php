@@ -1,144 +1,92 @@
 <?php
 session_start();
-require '../db.php';
+require '../config.php';
 
+// CEK LOGIN
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: user_login.php');
     exit;
 }
 
+
 $user_id = $_SESSION['user_id'];
 
-// Ambil semua peminjaman user
-$stmt = $conn->prepare("SELECT b.*, i.name as item_name, i.type as item_type, i.category
-                        FROM borrowings b
-                        JOIN items i ON b.item_id = i.id
-                        WHERE b.user_id = ?
-                        ORDER BY b.created_at DESC");
+// AMBIL DATA PEMINJAMAN + NAMA BARANG
+$query = "
+    SELECT 
+        b.id AS borrowing_id,
+        b.start_date,
+        b.end_date,
+        b.status,
+        i.name AS item_name,
+        bd.quantity
+    FROM borrowings b
+    JOIN borrowing_details bd ON bd.borrowing_id = b.id
+    JOIN items i ON i.id = bd.item_id
+    WHERE b.user_id = ?
+    ORDER BY b.id DESC
+";
+
+$stmt = $conn->prepare($query);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
-$borrowings = $stmt->get_result();
-$stmt->close();
+$data = $stmt->get_result();
+
+// HANDLE CANCEL
+if (isset($_GET['cancel'])) {
+    $id = intval($_GET['cancel']);
+
+    // hapus di borrowings (akan otomatis hapus borrowing_details karena ON DELETE CASCADE)
+    $del = $conn->prepare("DELETE FROM borrowings WHERE id = ? AND user_id = ?");
+    $del->bind_param("ii", $id, $user_id);
+    $del->execute();
+
+    header("Location: my_borrowings.php?deleted=1");
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riwayat Peminjaman Saya</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        .navbar { background: #2c3e50; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-        .navbar h1 { font-size: 1.5rem; }
-        .back-btn { background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; }
-        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
-        .header { background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .borrowing-card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; }
-        .item-name { font-size: 1.2rem; font-weight: bold; color: #2c3e50; }
-        .item-category { color: #7f8c8d; font-size: 0.9rem; }
-        .card-body { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
-        .info-item { }
-        .info-label { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 0.3rem; }
-        .info-value { font-weight: 500; color: #2c3e50; }
-        .status-badge { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: bold; }
-        .status-menunggu { background: #f39c12; color: white; }
-        .status-disetujui { background: #3498db; color: white; }
-        .status-ditolak { background: #e74c3c; color: white; }
-        .status-sedang_dipinjam { background: #9b59b6; color: white; }
-        .status-dikembalikan { background: #2ecc71; color: white; }
-        .description-box { background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-top: 1rem; }
-        .empty-state { text-align: center; padding: 3rem; color: #7f8c8d; background: white; border-radius: 8px; }
-        .timeline { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ecf0f1; }
-        .timeline-item { font-size: 0.85rem; color: #7f8c8d; }
-    </style>
+    <title>Peminjaman Saya</title>
 </head>
 <body>
-    <nav class="navbar">
-        <h1>📋 Riwayat Peminjaman Saya</h1>
-        <a href="user_dashboard.php" class="back-btn">← Kembali ke Dashboard</a>
-    </nav>
 
-    <div class="container">
-        <div class="header">
-            <h2>Daftar Peminjaman Anda</h2>
-            <p>Lihat status dan riwayat semua peminjaman Anda</p>
-        </div>
+<h2>Daftar Peminjaman Saya</h2>
 
-        <?php if ($borrowings->num_rows > 0): ?>
-            <?php while ($row = $borrowings->fetch_assoc()): ?>
-                <div class="borrowing-card">
-                    <div class="card-header">
-                        <div>
-                            <div class="item-name"><?= htmlspecialchars($row['item_name']) ?></div>
-                            <div class="item-category">
-                                <?= $row['item_type'] === 'barang' ? '📦' : '🏢' ?> 
-                                <?= htmlspecialchars($row['category']) ?>
-                            </div>
-                        </div>
-                        <span class="status-badge status-<?= $row['status'] ?>">
-                            <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
-                        </span>
-                    </div>
+<?php if (isset($_GET['deleted'])): ?>
+    <p style="color:green;">Peminjaman berhasil dihapus.</p>
+<?php endif; ?>
 
-                    <div class="card-body">
-                        <div class="info-item">
-                            <div class="info-label">Tanggal Mulai</div>
-                            <div class="info-value"><?= date('d M Y', strtotime($row['start_date'])) ?></div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Tanggal Selesai</div>
-                            <div class="info-value"><?= date('d M Y', strtotime($row['end_date'])) ?></div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Tanggal Pengajuan</div>
-                            <div class="info-value"><?= date('d M Y H:i', strtotime($row['created_at'])) ?></div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Durasi</div>
-                            <div class="info-value">
-                                <?php
-                                $start = new DateTime($row['start_date']);
-                                $end = new DateTime($row['end_date']);
-                                $diff = $start->diff($end);
-                                echo $diff->days + 1 . ' hari';
-                                ?>
-                            </div>
-                        </div>
-                    </div>
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Nama Barang</th>
+        <th>Jumlah</th>
+        <th>Tgl Mulai</th>
+        <th>Tgl Selesai</th>
+        <th>Status</th>
+        <th>Aksi</th>
+    </tr>
 
-                    <?php if ($row['description']): ?>
-                        <div class="description-box">
-                            <strong>Keperluan:</strong><br>
-                            <?= nl2br(htmlspecialchars($row['description'])) ?>
-                        </div>
-                    <?php endif; ?>
+    <?php while($row = $data->fetch_assoc()): ?>
+        <tr>
+            <td><?= htmlspecialchars($row['item_name']) ?></td>
+            <td><?= $row['quantity'] ?></td>
+            <td><?= $row['start_date'] ?></td>
+            <td><?= $row['end_date'] ?></td>
+            <td><?= $row['status'] ?></td>
+            <td>
+                <?php if ($row['status'] == 'pending'): ?>
+                    <a href="?cancel=<?= $row['borrowing_id'] ?>" onclick="return confirm('Hapus peminjaman ini?')">❌ Batalkan</a>
+                <?php else: ?>
+                    -
+                <?php endif; ?>
+            </td>
+        </tr>
+    <?php endwhile; ?>
 
-                    <?php if ($row['rejection_reason']): ?>
-                        <div class="description-box" style="background: #fee;">
-                            <strong>Alasan Penolakan:</strong><br>
-                            <?= nl2br(htmlspecialchars($row['rejection_reason'])) ?>
-                        </div>
-                    <?php endif; ?>
+</table>
 
-                    <div class="timeline">
-                        <div class="timeline-item">📝 Diajukan: <?= date('d M Y H:i', strtotime($row['created_at'])) ?></div>
-                        <?php if ($row['approved_at']): ?>
-                            <div class="timeline-item">✅ Disetujui: <?= date('d M Y H:i', strtotime($row['approved_at'])) ?></div>
-                        <?php endif; ?>
-                        <?php if ($row['returned_at']): ?>
-                            <div class="timeline-item">🔙 Dikembalikan: <?= date('d M Y H:i', strtotime($row['returned_at'])) ?></div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <div class="empty-state">
-                <h3>Belum ada riwayat peminjaman</h3>
-                <p>Mulai ajukan peminjaman barang atau ruangan dari dashboard</p>
-            </div>
-        <?php endif; ?>
-    </div>
 </body>
 </html>

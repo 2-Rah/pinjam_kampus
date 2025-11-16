@@ -1,6 +1,6 @@
 <?php
 session_start();
-require '../db.php'; // pastikan file ini membuat $conn (mysqli)
+require '../config.php';
 
 $error = '';
 

@@ -1,14 +1,13 @@
-<?php
-// config.php
-session_start(); // opsional, tapi aman jika dipakai di banyak file
+    <?php
 
-$host = 'localhost';
-$dbname = 'campus_borrowing';
-$username = 'root';
-$password = '';
 
-$conn = mysqli_connect($host, $username, $password, $dbname);
-if (!$conn) {
-    die("Koneksi database gagal: " . mysqli_connect_error());
-}
-?>
+    $host = "localhost";
+    $user = "root";
+    $pass = "";
+    $db   = "campus_borrowing";
+
+    $conn = new mysqli($host, $user, $pass, $db);
+
+    if ($conn->connect_errno) {
+        die("Koneksi gagal: " . $conn->connect_error);
+    }

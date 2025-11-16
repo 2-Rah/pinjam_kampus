@@ -1,11 +1,12 @@
 <?php
-require "../db.php";
+require '../config.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: user_login.php');
     exit;
 }
+
 
 $user_id     = $_SESSION['user_id'];
 $item_ids    = $_POST['item_id'];

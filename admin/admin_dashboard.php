@@ -1,6 +1,6 @@
 <?php
 session_start();
-require '../db.php';
+require '../config.php';
 
 // middleware protection: hanya admin yang boleh akses
 if (!isset($_SESSION['admin_id'])) {
