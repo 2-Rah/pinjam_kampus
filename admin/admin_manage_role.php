@@ -1,5 +1,5 @@
 <?php
-require "../db.php";
+require '../config.php';
 session_start();
 
 // hanya admin yg boleh buka
