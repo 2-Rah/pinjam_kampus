@@ -103,7 +103,7 @@ $items = $q2->get_result();
     <?php endwhile; ?>
 
     <br>
-    <a href="riwayat.php" class="btn">Kembali ke Riwayat</a>
+    <a href="my_borrowings.php" class="btn">Lihat Semua Peminjaman</a>
 
 </div>
 

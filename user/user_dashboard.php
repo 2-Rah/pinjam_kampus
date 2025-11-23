@@ -24,9 +24,10 @@ function getCount($conn, $uid, $status = null) {
     return $q->get_result()->fetch_assoc()['c'];
 }
 
-$pending = getCount($conn, $user_id, "pending");
-$ongoing = getCount($conn, $user_id, "approved"); // atau "on_loan" jika pakai status itu
+$pending  = getCount($conn, $user_id, "pending");
+$ongoing  = getCount($conn, $user_id, "approved");
 $finished = getCount($conn, $user_id, "returned");
+
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -39,16 +40,22 @@ $finished = getCount($conn, $user_id, "returned");
         body { font-family:Arial; background:#f4f6f9; padding-bottom:50px; }
 
         .navbar {
-            background:#2c3e50; color:white; padding:1rem 2rem;
-            display:flex; justify-content:space-between; align-items:center;
+            background:#2c3e50; 
+            color:white; 
+            padding:1rem 2rem;
+            display:flex; 
+            justify-content:space-between; 
+            align-items:center;
         }
         .navbar a { color:white; text-decoration:none; }
 
         .container { max-width:1100px; margin:auto; padding:20px; }
 
         .stats-grid {
-            display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-            gap:20px; margin-top:20px;
+            display:grid; 
+            grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+            gap:20px; 
+            margin-top:20px;
         }
         .stat-box {
             background:white; padding:20px; border-radius:10px;
@@ -59,13 +66,16 @@ $finished = getCount($conn, $user_id, "returned");
 
         .menu-grid {
             margin-top:30px;
-            display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+            display:grid; 
+            grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
             gap:25px;
         }
         .menu-card {
             background:white; padding:30px; border-radius:12px;
             box-shadow:0 3px 8px rgba(0,0,0,0.1);
-            text-align:center; text-decoration:none; color:#2c3e50;
+            text-align:center; 
+            text-decoration:none; 
+            color:#2c3e50;
             transition:0.25s;
         }
         .menu-card:hover {
@@ -99,6 +109,7 @@ $finished = getCount($conn, $user_id, "returned");
 
     <!-- STATISTIK -->
     <div class="stats-grid">
+
         <div class="stat-box">
             <h2><?= $pending ?></h2>
             <p>Sedang Diajukan</p>
@@ -113,10 +124,12 @@ $finished = getCount($conn, $user_id, "returned");
             <h2><?= $finished ?></h2>
             <p>Sudah Selesai</p>
         </div>
+
     </div>
 
     <!-- MENU GRID -->
     <div class="menu-grid">
+
         <a href="barang_list.php" class="menu-card">
             <div class="icon">📝</div>
             <h3>Ajukan Peminjaman</h3>
@@ -128,6 +141,14 @@ $finished = getCount($conn, $user_id, "returned");
             <h3>Peminjaman Saya</h3>
             <p>Lihat riwayat dan status peminjamanmu</p>
         </a>
+
+        <!-- MENU PENGEMBALIAN BARANG (BARU) -->
+        <a href="user_return_selection.php" class="menu-card">
+            <div class="icon">🔄</div>
+            <h3>Pengembalian Barang</h3>
+            <p>Kembalikan barang yang sedang kamu pinjam</p>
+        </a>
+
     </div>
 
 </div>
