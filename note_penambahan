@@ -1,7 +1,9 @@
 tambah
 retuturn barang sisi admin user (belum optimal)
-di list peminjaman tambahin tanggal berapa harus di kembalikan 
+-rertun tambahin keterangan type item
+di list peminjaman tambahin tanggal berapa harus di kembalikan (auto 3 hari setelah dipinjam)
 perbaiki tampilan dan hrefnya
+tambah tombol kembali disetiap page
 cek fiturnya lagi (banyak yang harus di revisi)
 hosting
 

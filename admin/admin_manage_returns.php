@@ -30,7 +30,7 @@ if (isset($_POST['update_status'])) {
 }
 
 // ==============================
-// AMBIL SEMUA RETURNS
+// AMBIL SEMUA RETURNS + JUDUL
 // ==============================
 $list = mysqli_query($conn, "
     SELECT 
@@ -104,7 +104,6 @@ body { font-family:Arial; margin:0; background:#f5f5f5; }
 .card:hover { background:#f0f7ff; cursor:pointer; }
 .active { border:2px solid #007bff; }
 
-.title { font-size:20px; margin-bottom:10px; }
 table { width:100%; border-collapse:collapse; margin-top:10px; background:white; }
 th, td { padding:10px; border:1px solid #ccc; }
 th { background:#f0f0f0; }
@@ -193,7 +192,7 @@ img { max-width:120px; border-radius:6px; }
                     <td><?= htmlspecialchars($i['item_condition'] ?? '') ?></td>
                     <td>
                         <?php if (!empty($i['image'])): ?>
-                            <img src="../user/pengembalian_barang/<?= htmlspecialchars($i['image']) ?>" alt="foto">
+                            <img src="../user/<?= htmlspecialchars($i['image']) ?>" alt="foto barang">
                         <?php else: ?>
                             <i>Tidak ada foto</i>
                         <?php endif; ?>

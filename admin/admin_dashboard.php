@@ -74,6 +74,13 @@ $admin_name = $_SESSION['admin_name'];
                 <p>Setujui / tolak peminjaman</p>
             </a>
 
+            <!-- === KARTU BARU UNTUK PENGEMBALIAN === -->
+            <a href="admin_manage_returns.php" class="card">
+                <div class="card-icon">🔄</div>
+                <h3>Kelola Pengembalian</h3>
+                <p>Lihat dan verifikasi pengembalian barang</p>
+            </a>
+
         </div>
     </div>
 
