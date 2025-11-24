@@ -30,7 +30,7 @@ if (isset($_POST['update_status'])) {
 }
 
 // ==============================
-// AMBIL SEMUA RETURNS + JUDUL
+// AMBIL SEMUA RETURNS
 // ==============================
 $list = mysqli_query($conn, "
     SELECT 
@@ -56,7 +56,6 @@ $items = [];
 if (isset($_GET['view'])) {
     $return_id = intval($_GET['view']);
 
-    // Ambil header detail
     $d = mysqli_query($conn, "
         SELECT 
             r.*, 
@@ -70,7 +69,7 @@ if (isset($_GET['view'])) {
 
     $detail = mysqli_fetch_assoc($d);
 
-    // Ambil item yang dikembalikan
+    // Detail barang
     $items = mysqli_query($conn, "
         SELECT 
             rd.*, 
@@ -117,116 +116,182 @@ img { max-width:120px; border-radius:6px; }
 .approved { background:#0275d8; }
 .rejected { background:#d9534f; }
 .completed { background:#5cb85c; }
+
+.view-btn {
+    padding:6px 10px;
+    background:#007bff;
+    color:white;
+    border:none;
+    border-radius:5px;
+    text-decoration:none;
+    cursor:pointer;
+}
+
+/* ======================= */
+/*  MODAL FULLSCREEN FOTO  */
+/* ======================= */
+.modal {
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    justify-content:center;
+    align-items:center;
+    z-index:9999;
+}
+
+.modal img {
+    max-width:90vw; 
+    max-height:90vh;
+    border-radius:10px;
+    object-fit:contain;
+}
+
+.close-btn {
+    position:absolute;
+    top:20px;
+    right:30px;
+    font-size:40px;
+    font-weight:bold;
+    color:white;
+    cursor:pointer;
+    user-select:none;
+}
 </style>
 </head>
 <body>
 
 <div class="container">
 
-    <!-- ================= LEFT LIST ================= -->
+    <!-- ========== LEFT LIST ============= -->
     <div class="left">
         <h2>Daftar Pengembalian</h2>
 
         <?php while ($r = mysqli_fetch_assoc($list)): ?>
-            <a href="admin_manage_returns.php?view=<?= $r['id'] ?>" 
-               style="text-decoration:none; color:black;">
-            <div class="card <?= (isset($_GET['view']) && $_GET['view']==$r['id'])?'active':'' ?>">
-                
-                <b>Return ID:</b> <?= $r['id'] ?><br>
-                <b>Judul:</b> <?= htmlspecialchars($r['borrow_desc'] ?? '') ?><br>
-                <b>User:</b> <?= htmlspecialchars($r['username'] ?? '') ?><br>
+            <a href="admin_manage_returns.php?view=<?= $r['id'] ?>" style="text-decoration:none; color:black;">
+                <div class="card <?= (isset($_GET['view']) && $_GET['view']==$r['id'])?'active':'' ?>">
+                    <b>Return ID:</b> <?= $r['id'] ?><br>
+                    <b>Judul:</b> <?= htmlspecialchars($r['borrow_desc']) ?><br>
+                    <b>User:</b> <?= htmlspecialchars($r['username']) ?><br>
 
-                <span class="status-box <?= $r['status'] ?>">
-                    <?= $r['status'] ?>
-                </span><br>
+                    <span class="status-box <?= $r['status'] ?>">
+                        <?= $r['status'] ?>
+                    </span><br>
 
-                <small><?= $r['created_at'] ?></small>
-            </div>
+                    <small><?= $r['created_at'] ?></small>
+                </div>
             </a>
         <?php endwhile; ?>
     </div>
 
-    <!-- ================= RIGHT DETAILS ================= -->
+    <!-- ========== RIGHT DETAILS ============= -->
     <div class="right">
-        <?php if (!$detail): ?>
-            <h2>Pilih pengembalian di sebelah kiri</h2>
-        <?php else: ?>
 
-            <h2>Detail Pengembalian #<?= $detail['id'] ?></h2>
+    <?php if (!$detail): ?>
 
-            <?php if (isset($_GET['updated'])): ?>
-                <p style="color:green;">Status berhasil diperbarui.</p>
-            <?php endif; ?>
+        <h2>Pilih pengembalian di sebelah kiri</h2>
 
-            <p>
-                <b>Judul:</b> <?= htmlspecialchars($detail['borrow_desc'] ?? '') ?><br>
-                <b>User:</b> <?= htmlspecialchars($detail['username'] ?? '') ?><br>
-                <b>Borrowing ID:</b> <?= $detail['borrowing_id'] ?><br>
-                <b>Tanggal Pengajuan:</b> <?= $detail['created_at'] ?><br>
+    <?php else: ?>
 
-                <b>Status:</b>
-                <span class="status-box <?= $detail['status'] ?>">
-                    <?= $detail['status'] ?>
-                </span><br>
+        <h2>Detail Pengembalian #<?= $detail['id'] ?></h2>
 
-                <?php if (!empty($detail['rejection_reason'])): ?>
-                    <b>Alasan Penolakan:</b> 
-                    <?= htmlspecialchars($detail['rejection_reason'] ?? '') ?><br>
-                <?php endif; ?>
-            </p>
-
-            <h3>Barang yang Dikembalikan</h3>
-
-            <table>
-                <tr>
-                    <th>Barang</th>
-                    <th>Dikembalikan</th>
-                    <th>Kondisi</th>
-                    <th>Foto</th>
-                </tr>
-
-                <?php while ($i = mysqli_fetch_assoc($items)): ?>
-                <tr>
-                    <td><?= htmlspecialchars($i['item_name'] ?? '') ?></td>
-                    <td><?= $i['quantity'] ?></td>
-                    <td><?= htmlspecialchars($i['item_condition'] ?? '') ?></td>
-                    <td>
-                        <?php if (!empty($i['image'])): ?>
-                            <img src="../user/<?= htmlspecialchars($i['image']) ?>" alt="foto barang">
-                        <?php else: ?>
-                            <i>Tidak ada foto</i>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-            </table>
-
-            <h3>Perbarui Status</h3>
-
-            <form method="POST">
-                <input type="hidden" name="return_id" value="<?= $detail['id'] ?>">
-
-                <label>Status:</label><br>
-                <select name="status" required>
-                    <option value="pending"   <?= $detail['status']=='pending'?'selected':'' ?>>Pending</option>
-                    <option value="approved"  <?= $detail['status']=='approved'?'selected':'' ?>>Approved</option>
-                    <option value="rejected"  <?= $detail['status']=='rejected'?'selected':'' ?>>Rejected</option>
-                    <option value="completed" <?= $detail['status']=='completed'?'selected':'' ?>>Completed</option>
-                </select>
-
-                <br><br>
-                <label>Alasan Penolakan (opsional):</label><br>
-                <textarea name="reason" rows="3" style="width:100%;"><?= htmlspecialchars($detail['rejection_reason'] ?? '') ?></textarea>
-
-                <br><br>
-                <button type="submit" name="update_status" 
-                        style="padding:10px 20px; background:#007bff; color:white; border:none; border-radius:6px; cursor:pointer;">
-                    Simpan Perubahan
-                </button>
-            </form>
+        <?php if (isset($_GET['updated'])): ?>
+            <p style="color:green;">Status berhasil diperbarui.</p>
         <?php endif; ?>
+
+        <p>
+            <b>Judul:</b> <?= htmlspecialchars($detail['borrow_desc']) ?><br>
+            <b>User:</b> <?= htmlspecialchars($detail['username']) ?><br>
+            <b>Borrowing ID:</b> <?= $detail['borrowing_id'] ?><br>
+            <b>Tanggal Pengajuan:</b> <?= $detail['created_at'] ?><br>
+
+            <b>Status:</b>
+            <span class="status-box <?= $detail['status'] ?>"><?= $detail['status'] ?></span><br>
+
+            <?php if (!empty($detail['rejection_reason'])): ?>
+                <b>Alasan Penolakan:</b> <?= htmlspecialchars($detail['rejection_reason']) ?><br>
+            <?php endif; ?>
+        </p>
+
+        <h3>Barang yang Dikembalikan</h3>
+
+        <table>
+            <tr>
+                <th>Barang</th>
+                <th>Dipinjam</th>
+                <th>Dikembalikan</th>
+                <th>Kondisi</th>
+                <th>Foto</th>
+            </tr>
+
+            <?php while ($i = mysqli_fetch_assoc($items)): ?>
+            <tr>
+                <td><?= htmlspecialchars($i['item_name']) ?></td>
+                <td><b><?= $i['borrowed_qty'] ?></b></td>
+                <td><?= $i['quantity'] ?></td>
+                <td><?= htmlspecialchars($i['item_condition']) ?></td>
+                <td>
+                    <?php if (!empty($i['image'])): ?>
+                        <button class="view-btn" onclick="openModal('../user/<?= htmlspecialchars($i['image']) ?>')">
+                            Lihat Foto
+                        </button>
+                    <?php else: ?>
+                        <i>Tidak ada foto</i>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endwhile; ?>
+        </table>
+
+        <h3>Perbarui Status</h3>
+
+        <form method="POST">
+            <input type="hidden" name="return_id" value="<?= $detail['id'] ?>">
+
+            <label>Status:</label><br>
+            <select name="status" required>
+                <option value="pending" <?= $detail['status']=='pending'?'selected':'' ?>>Pending</option>
+                <option value="approved" <?= $detail['status']=='approved'?'selected':'' ?>>Approved</option>
+                <option value="rejected" <?= $detail['status']=='rejected'?'selected':'' ?>>Rejected</option>
+            </select>
+
+            <br><br>
+            <label>Alasan Penolakan (opsional):</label><br>
+            <textarea name="reason" rows="3" style="width:100%;"><?= htmlspecialchars($detail['rejection_reason'] ?? '') ?></textarea>
+
+            <br><br>
+            <button type="submit" name="update_status" 
+                style="padding:10px 20px; background:#007bff; color:white; border:none; border-radius:6px; cursor:pointer;">
+                Simpan Perubahan
+            </button>
+        </form>
+
+    <?php endif; ?>
+
     </div>
 </div>
+
+<!-- ======================= -->
+<!--     MODAL FULLSCREEN    -->
+<!-- ======================= -->
+<div id="imgModal" class="modal">
+    <span class="close-btn" onclick="closeModal()">&times;</span>
+    <img id="modalImage">
+</div>
+
+<script>
+function openModal(src) {
+    document.getElementById("modalImage").src = src;
+    document.getElementById("imgModal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("imgModal").style.display = "none";
+}
+</script>
 
 </body>
 </html>

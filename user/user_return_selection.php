@@ -10,31 +10,29 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = (int) $_SESSION['user_id'];
 
 /* ===========================================================
-   Ambil borrowing + details + status dari RETURNS
+   Ambil borrowing + details + status return (jika ada)
    =========================================================== */
+
 $sql = "
 SELECT 
     b.id AS borrowing_id,
     b.description,
     b.created_at AS borrow_date,
+    b.status AS borrow_status,
 
-    -- STATUS PENGEMBALIAN
     r.status AS return_status,
     r.created_at AS return_request_date,
 
-    -- DETAIL BARANG
     i.name AS item_name,
     bd.quantity
 
 FROM borrowings b
 JOIN borrowing_details bd ON bd.borrowing_id = b.id
 JOIN items i ON i.id = bd.item_id
-
--- LEFT JOIN returns agar borrowing yang belum dikembalikan tetap muncul
 LEFT JOIN returns r ON r.borrowing_id = b.id
 
 WHERE b.user_id = $user_id
-  AND b.status IN ('approved','borrowed')
+  AND b.status IN ('approved','picked_up','borrowed')
 
 ORDER BY b.id DESC
 ";
@@ -42,29 +40,43 @@ ORDER BY b.id DESC
 $query = mysqli_query($conn, $sql);
 
 /* ===========================================================
-   Kelompokkan berdasarkan borrowing_id
+   Kelompokkan per borrowing
    =========================================================== */
 $borrowings = [];
 
 while ($row = mysqli_fetch_assoc($query)) {
+
     $id = $row['borrowing_id'];
 
     if (!isset($borrowings[$id])) {
+
+        // Tentukan status gabungan
+        $final_status = "Belum Dikembalikan";
+
+        if ($row['return_status']) {
+            // Jika sudah ada pengembalian → pakai status dari returns
+            $final_status = $row['return_status'];
+        } else {
+            // Kalau belum ada returns → status dari borrowing
+            if ($row['borrow_status'] == "approved") {
+                $final_status = "Menunggu Diambil";
+            } elseif ($row['borrow_status'] == "picked_up" || $row['borrow_status'] == "borrowed") {
+                $final_status = "Belum Dikembalikan";
+            }
+        }
+
         $borrowings[$id] = [
             "description" => $row['description'],
             "borrow_date" => $row['borrow_date'],
-
-            // status pengembalian dari returns
-            "return_status" => $row['return_status'] ?: "Belum Dikembalikan",
+            "status" => $final_status,
             "return_request_date" => $row['return_request_date'],
-
             "items" => []
         ];
     }
 
-    $borrowings[$id]['items'][] = [
-        "name"     => $row['item_name'],
-        "qty"      => $row['quantity']
+    $borrowings[$id]["items"][] = [
+        "name" => $row["item_name"],
+        "qty" => $row["quantity"]
     ];
 }
 ?>
@@ -139,14 +151,15 @@ th { background:#fafafa; }
 
         <b>Status Pengembalian:</b>
         <span class="status-box 
-            <?= $b['return_status'] == 'pending' ? 'pending' : '' ?>
-            <?= $b['return_status'] == 'approved' ? 'approved' : '' ?>
-            <?= $b['return_status'] == 'rejected' ? 'rejected' : '' ?>
-            <?= $b['return_status'] == 'completed' ? 'completed' : '' ?>
-            <?= $b['return_status'] == 'Belum Dikembalikan' ? 'default-status' : '' ?>
+            <?= $b['status'] == 'pending' ? 'pending' : '' ?>
+            <?= $b['status'] == 'approved' ? 'approved' : '' ?>
+            <?= $b['status'] == 'rejected' ? 'rejected' : '' ?>
+            <?= $b['status'] == 'completed' ? 'completed' : '' ?>
+            <?= $b['status'] == 'Belum Dikembalikan' ? 'default-status' : '' ?>
         ">
-            <?= $b['return_status'] ?>
+            <?= $b['status'] ?>
         </span>
+
         <?php if ($b['return_request_date']): ?>
             <br><b>Tanggal Pengajuan:</b> <?= $b['return_request_date'] ?>
         <?php endif; ?>
@@ -166,12 +179,11 @@ th { background:#fafafa; }
         <?php endforeach; ?>
     </table>
 
-    <!-- Hanya bisa kembalikan kalau belum completed -->
-    <?php if ($b['return_status'] != 'completed'): ?>
-        <form action="user_return_borrowing.php" method="GET" style="margin-top:12px;">
-            <input type="hidden" name="borrow_id" value="<?= $id ?>">
-            <button class="btn">Kembalikan</button>
-        </form>
+    <?php if ($b['status'] != 'completed'): ?>
+    <form action="user_return_borrowing.php" method="GET" style="margin-top:12px;">
+        <input type="hidden" name="borrow_id" value="<?= $id ?>">
+        <button class="btn">Kembalikan</button>
+    </form>
     <?php endif; ?>
 
 </div>

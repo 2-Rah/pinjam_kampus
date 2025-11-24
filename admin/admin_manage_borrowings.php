@@ -8,36 +8,29 @@ if (!isset($_SESSION['admin_id'])) {
     exit;
 }
 
-// proses update status
-if (isset($_GET['approve'])) {
-    $id = intval($_GET['approve']);
-    $conn->query("UPDATE borrowings SET status = 'approved' WHERE id = $id");
-    header("Location: admin_manage_borrowings.php?msg=approved");
+// update status via POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+    $id = intval($_POST['borrowing_id']);
+    $status = $_POST['status'];
+
+    // validasi status
+    $allowed = ['pending','approved','rejected','picked_up'];
+    if (!in_array($status, $allowed)) {
+        $status = 'pending';
+    }
+
+    $stmt = $conn->prepare("UPDATE borrowings SET status=? WHERE id=?");
+    $stmt->bind_param("si", $status, $id);
+    $stmt->execute();
+
+    header("Location: admin_manage_borrowings.php?msg=status_updated");
     exit;
 }
 
-if (isset($_GET['reject'])) {
-    $id = intval($_GET['reject']);
-    $conn->query("UPDATE borrowings SET status = 'rejected' WHERE id = $id");
-    header("Location: admin_manage_borrowings.php?msg=rejected");
-    exit;
-}
-
-if (isset($_GET['delete'])) {
-    $id = intval($_GET['delete']);
-
-    // hapus detail dulu
-    $conn->query("DELETE FROM borrowing_details WHERE borrowing_id = $id");
-    // hapus induk
-    $conn->query("DELETE FROM borrowings WHERE id = $id");
-
-    header("Location: admin_manage_borrowings.php?msg=deleted");
-    exit;
-}
-
-// ambil peminjaman
+// ambil peminjaman + deskripsi
 $sql = "
-SELECT b.id, b.user_id, b.status, b.created_at, u.name AS user_name
+SELECT b.id, b.user_id, b.status, b.created_at, b.description,
+       u.name AS user_name
 FROM borrowings b
 JOIN users u ON b.user_id = u.id
 ORDER BY b.created_at DESC
@@ -56,10 +49,9 @@ $borrowings = $conn->query($sql);
     table { width:100%; border-collapse:collapse; background:white; }
     th, td { border:1px solid #ccc; padding:10px; text-align:left; }
     th { background:#eee; }
-    a.button { padding:6px 10px; background:#3498db; color:white; text-decoration:none; border-radius:4px; }
-    a.reject { background:#e74c3c; }
-    a.delete { background:#555; }
+    select { padding:5px; }
     .ok { background:#2ecc71; padding:10px; margin-bottom:10px; color:white; }
+    a.button { padding:6px 10px; background:#3498db; color:white; text-decoration:none; border-radius:4px; }
 </style>
 </head>
 <body>
@@ -73,32 +65,45 @@ $borrowings = $conn->query($sql);
 <table>
     <tr>
         <th>ID</th>
+        <th>Deskripsi</th>
         <th>Peminjam</th>
         <th>Tanggal</th>
         <th>Status</th>
         <th>Detail</th>
-        <th>Aksi</th>
+        <th>Simpan</th>
     </tr>
 
     <?php while ($row = $borrowings->fetch_assoc()): ?>
     <tr>
         <td><?= $row['id'] ?></td>
+
+        <!-- Kolom deskripsi -->
+        <td><?= htmlspecialchars($row['description']) ?></td>
+
         <td><?= htmlspecialchars($row['user_name']) ?></td>
         <td><?= $row['created_at'] ?></td>
-        <td><?= $row['status'] ?></td>
+
+        <td>
+            <!-- dropdown update status -->
+            <form method="POST" style="display:flex; gap:5px;">
+                <input type="hidden" name="borrowing_id" value="<?= $row['id'] ?>">
+                <select name="status">
+                    <option value="pending"   <?= $row['status']=='pending'?'selected':'' ?>>Pending</option>
+                    <option value="approved"  <?= $row['status']=='approved'?'selected':'' ?>>Approved</option>
+                    <option value="rejected"  <?= $row['status']=='rejected'?'selected':'' ?>>Rejected</option>
+                    <option value="picked_up" <?= $row['status']=='picked_up'?'selected':'' ?>>Picked Up</option>
+                </select>
+        </td>
 
         <td>
             <a href="admin_view_borrowing.php?id=<?= $row['id'] ?>" class="button">Lihat</a>
         </td>
 
         <td>
-            <?php if ($row['status'] === 'pending'): ?>
-                <a class="button" href="?approve=<?= $row['id'] ?>">Setujui</a>
-                <a class="button reject" href="?reject=<?= $row['id'] ?>">Tolak</a>
-            <?php endif; ?>
-
-            <a class="button delete" href="?delete=<?= $row['id'] ?>" onclick="return confirm('Hapus peminjaman ini?')">Hapus</a>
+                <button type="submit" name="update_status" style="padding:6px 12px;">Simpan</button>
+            </form>
         </td>
+
     </tr>
     <?php endwhile; ?>
 </table>

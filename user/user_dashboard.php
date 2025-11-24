@@ -11,85 +11,141 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'];
 
-// Statistik peminjaman
-function getCount($conn, $uid, $status = null) {
-    if ($status === null) {
-        $q = $conn->prepare("SELECT COUNT(*) AS c FROM borrowings WHERE user_id = ?");
-        $q->bind_param("i", $uid);
-    } else {
-        $q = $conn->prepare("SELECT COUNT(*) AS c FROM borrowings WHERE user_id = ? AND status = ?");
-        $q->bind_param("is", $uid, $status);
-    }
-    $q->execute();
-    return $q->get_result()->fetch_assoc()['c'];
-}
+/* =============================
+   FUNGSI HITUNG STATUS
+   ============================= */
 
-$pending  = getCount($conn, $user_id, "pending");
-$ongoing  = getCount($conn, $user_id, "approved");
-$finished = getCount($conn, $user_id, "returned");
+// 1. Sedang diajukan
+$sedang_diajukan = $conn->query("
+    SELECT COUNT(*) AS c 
+    FROM borrowings 
+    WHERE user_id = $user_id AND status = 'pending'
+")->fetch_assoc()['c'];
+
+// 2. Pengajuan ditolak
+$pengajuan_ditolak = $conn->query("
+    SELECT COUNT(*) AS c 
+    FROM borrowings 
+    WHERE user_id = $user_id AND status = 'rejected'
+")->fetch_assoc()['c'];
+
+// 3. Belum diambil
+$belum_diambil = $conn->query("
+    SELECT COUNT(*) AS c 
+    FROM borrowings 
+    WHERE user_id = $user_id AND status = 'approved'
+")->fetch_assoc()['c'];
+
+// 4. Belum dikembalikan (picked_up namun belum ada pengajuan return)
+$belum_dikembalikan = $conn->query("
+    SELECT COUNT(*) AS c 
+    FROM borrowings b
+    WHERE b.user_id = $user_id
+      AND b.status = 'picked_up'
+      AND NOT EXISTS (SELECT 1 FROM returns r WHERE r.borrowing_id = b.id)
+")->fetch_assoc()['c'];
+
+// 5. Pengembalian sedang diperiksa
+$pengembalian_diperiksa = $conn->query("
+    SELECT COUNT(*) AS c
+    FROM returns r
+    JOIN borrowings b ON r.borrowing_id = b.id
+    WHERE b.user_id = $user_id
+      AND r.status = 'pending'
+")->fetch_assoc()['c'];
+
+// 6. Pengembalian ditolak
+$pengembalian_ditolak = $conn->query("
+    SELECT COUNT(*) AS c
+    FROM returns r
+    JOIN borrowings b ON r.borrowing_id = b.id
+    WHERE b.user_id = $user_id
+      AND r.status = 'rejected'
+")->fetch_assoc()['c'];
+
+// 7. Peminjaman selesai
+$peminjaman_selesai = $conn->query("
+    SELECT COUNT(*) AS c
+    FROM returns r
+    JOIN borrowings b ON r.borrowing_id = b.id
+    WHERE b.user_id = $user_id
+      AND r.status = 'approved'
+")->fetch_assoc()['c'];
 
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Sistem Peminjaman</title>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:Arial; background:#f4f6f9; padding-bottom:50px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Sistem Peminjaman</title>
 
-        .navbar {
-            background:#2c3e50; 
-            color:white; 
-            padding:1rem 2rem;
-            display:flex; 
-            justify-content:space-between; 
-            align-items:center;
-        }
-        .navbar a { color:white; text-decoration:none; }
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:Arial; background:#f4f6f9; padding-bottom:50px; }
 
-        .container { max-width:1100px; margin:auto; padding:20px; }
+    .navbar {
+        background:#2c3e50; 
+        color:white; 
+        padding:1rem 2rem;
+        display:flex; 
+        justify-content:space-between; 
+        align-items:center;
+    }
+    .navbar a { color:white; text-decoration:none; }
 
-        .stats-grid {
-            display:grid; 
-            grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-            gap:20px; 
-            margin-top:20px;
-        }
-        .stat-box {
-            background:white; padding:20px; border-radius:10px;
-            box-shadow:0 3px 8px rgba(0,0,0,0.1);
-            text-align:center;
-        }
-        .stat-box h2 { font-size:2.2rem; margin-bottom:10px; color:#2c3e50; }
+    .container { max-width:1100px; margin:auto; padding:20px; }
 
-        .menu-grid {
-            margin-top:30px;
-            display:grid; 
-            grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
-            gap:25px;
-        }
-        .menu-card {
-            background:white; padding:30px; border-radius:12px;
-            box-shadow:0 3px 8px rgba(0,0,0,0.1);
-            text-align:center; 
-            text-decoration:none; 
-            color:#2c3e50;
-            transition:0.25s;
-        }
-        .menu-card:hover {
-            transform:translateY(-5px);
-            box-shadow:0 5px 15px rgba(0,0,0,0.15);
-        }
-        .menu-card h3 { margin:10px 0; font-size:1.4rem; }
-        .menu-card p { color:#7f8c8d; }
+    /* SINGLE BAR STATUS */
+    .status-bar {
+        background:white;
+        padding:15px;
+        border-radius:12px;
+        box-shadow:0 3px 8px rgba(0,0,0,0.1);
+        margin-top:20px;
+        display:flex;
+        flex-wrap:wrap;
+        justify-content:space-between;
+    }
 
-        .icon {
-            font-size:3.5rem;
-            margin-bottom:10px;
-        }
-    </style>
+    .status-box {
+        text-align:center;
+        margin:10px;
+        min-width:120px;
+    }
+
+    .status-number {
+        font-size:2rem;
+        font-weight:bold;
+        color:#2c3e50;
+    }
+
+    .status-label {
+        color:#7f8c8d;
+    }
+
+    .menu-grid {
+        margin-top:30px;
+        display:grid; 
+        grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+        gap:25px;
+    }
+
+    .menu-card {
+        background:white; padding:30px; border-radius:12px;
+        box-shadow:0 3px 8px rgba(0,0,0,0.1);
+        text-align:center; 
+        text-decoration:none; 
+        color:#2c3e50;
+        transition:0.25s;
+    }
+    .menu-card:hover {
+        transform:translateY(-5px);
+        box-shadow:0 5px 15px rgba(0,0,0,0.15);
+    }
+    .icon { font-size:3.5rem; margin-bottom:10px; }
+</style>
+
 </head>
 <body>
 
@@ -105,24 +161,44 @@ $finished = getCount($conn, $user_id, "returned");
 <div class="container">
 
     <h2>Dashboard</h2>
-    <p>Ringkasan peminjaman Anda:</p>
+    <p>Status Peminjaman Anda:</p>
 
-    <!-- STATISTIK -->
-    <div class="stats-grid">
+    <!-- STATUS BAR -->
+    <div class="status-bar">
 
-        <div class="stat-box">
-            <h2><?= $pending ?></h2>
-            <p>Sedang Diajukan</p>
+        <div class="status-box">
+            <div class="status-number"><?= $sedang_diajukan ?></div>
+            <div class="status-label">Sedang Diajukan</div>
         </div>
 
-        <div class="stat-box">
-            <h2><?= $ongoing ?></h2>
-            <p>Belum Dikembalikan</p>
+        <div class="status-box">
+            <div class="status-number"><?= $pengajuan_ditolak ?></div>
+            <div class="status-label">Pengajuan Ditolak</div>
         </div>
 
-        <div class="stat-box">
-            <h2><?= $finished ?></h2>
-            <p>Sudah Selesai</p>
+        <div class="status-box">
+            <div class="status-number"><?= $belum_diambil ?></div>
+            <div class="status-label">Belum Diambil</div>
+        </div>
+
+        <div class="status-box">
+            <div class="status-number"><?= $belum_dikembalikan ?></div>
+            <div class="status-label">Belum Dikembalikan</div>
+        </div>
+
+        <div class="status-box">
+            <div class="status-number"><?= $pengembalian_diperiksa ?></div>
+            <div class="status-label">Pengembalian Diperiksa</div>
+        </div>
+
+        <div class="status-box">
+            <div class="status-number"><?= $pengembalian_ditolak ?></div>
+            <div class="status-label">Pengembalian Ditolak</div>
+        </div>
+
+        <div class="status-box">
+            <div class="status-number"><?= $peminjaman_selesai ?></div>
+            <div class="status-label">Peminjaman Selesai</div>
         </div>
 
     </div>
@@ -139,10 +215,9 @@ $finished = getCount($conn, $user_id, "returned");
         <a href="my_borrowings.php" class="menu-card">
             <div class="icon">📚</div>
             <h3>Peminjaman Saya</h3>
-            <p>Lihat riwayat dan status peminjamanmu</p>
+            <p>Lihat riwayat dan status</p>
         </a>
 
-        <!-- MENU PENGEMBALIAN BARANG (BARU) -->
         <a href="user_return_selection.php" class="menu-card">
             <div class="icon">🔄</div>
             <h3>Pengembalian Barang</h3>
