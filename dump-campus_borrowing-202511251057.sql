@@ -33,7 +33,7 @@ CREATE TABLE `borrowing_details` (
   KEY `item_id` (`item_id`),
   CONSTRAINT `borrowing_details_ibfk_1` FOREIGN KEY (`borrowing_id`) REFERENCES `borrowings` (`id`) ON DELETE CASCADE,
   CONSTRAINT `borrowing_details_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -42,6 +42,7 @@ CREATE TABLE `borrowing_details` (
 
 LOCK TABLES `borrowing_details` WRITE;
 /*!40000 ALTER TABLE `borrowing_details` DISABLE KEYS */;
+INSERT INTO `borrowing_details` VALUES (9,8,5,1,'2025-11-24 01:51:44'),(10,9,8,1,'2025-11-24 02:12:52'),(11,10,8,1,'2025-11-24 02:29:25');
 /*!40000 ALTER TABLE `borrowing_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -58,7 +59,7 @@ CREATE TABLE `borrowings` (
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
-  `status` enum('pending','approved','rejected','picked_up','completed','cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+  `status` enum('pending','approved','rejected','picked_up','completed','not_returned') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
   `pickup_location` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `rejection_reason` text COLLATE utf8mb4_unicode_ci,
   `approved_at` timestamp NULL DEFAULT NULL,
@@ -71,7 +72,7 @@ CREATE TABLE `borrowings` (
   KEY `approved_by` (`approved_by`),
   CONSTRAINT `borrowings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `borrowings_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -80,6 +81,7 @@ CREATE TABLE `borrowings` (
 
 LOCK TABLES `borrowings` WRITE;
 /*!40000 ALTER TABLE `borrowings` DISABLE KEYS */;
+INSERT INTO `borrowings` VALUES (8,11,'2025-11-24','2025-11-25','12312312e','picked_up','jpewofjsdhaiwcnisdfhmxoewhfmrujmhqrghreg9phcp9rmghruejg3orxmdklgheawgn0rugjepoigjaisjfsdokgjnogmuerjpiiiiiiigghhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhjjjjjjjjjjjjjjjjjkldfgahgoreihaldfjk',NULL,NULL,NULL,NULL,'2025-11-24 01:51:44','2025-11-24 01:55:52'),(9,11,'2025-11-24','2025-11-26','buat tugas','picked_up','ti???',NULL,NULL,NULL,NULL,'2025-11-24 02:12:52','2025-11-24 02:13:37'),(10,11,'2025-11-24','2025-11-24','123','picked_up','123',NULL,NULL,NULL,NULL,'2025-11-24 02:29:25','2025-11-24 02:29:40');
 /*!40000 ALTER TABLE `borrowings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -102,7 +104,7 @@ CREATE TABLE `items` (
   `is_active` tinyint(1) DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -111,7 +113,7 @@ CREATE TABLE `items` (
 
 LOCK TABLES `items` WRITE;
 /*!40000 ALTER TABLE `items` DISABLE KEYS */;
-INSERT INTO `items` VALUES (1,'test item bjirlah','barang','testing',3,0,'aku pusing wak',NULL,1,'2025-11-09 14:39:54'),(2,'santha house','ruangan','rumah makan',0,12,'santha',NULL,1,'2025-11-10 01:51:13'),(3,'proyektor asdnasnoidfnodcoaidcdsadasasdad','barang','sdasd',1,NULL,'awdadsd',NULL,1,'2025-11-10 04:55:19'),(4,'ikan','barang','ayam',1,NULL,'kuda',NULL,1,'2025-11-10 04:55:33'),(5,'My Istri','barang','Istri',1,NULL,'Punya Turah','1762779136_wallpaper761.png',1,'2025-11-10 12:52:16');
+INSERT INTO `items` VALUES (5,'My Istri','barang','Istri',1,NULL,'Punya Turah','1762779136_wallpaper761.png',1,'2025-11-10 12:52:16'),(6,'test item','barang','testing',13,NULL,'testing','1763341625_wallpaper766__1_.png',1,'2025-11-17 01:07:05'),(7,'miku','barang','miku',1,NULL,'miku','1763341785_undefined_-_Imgur__1_.png',1,'2025-11-17 01:09:45'),(8,'laptop','barang','laptop',1,NULL,'laptop aja','1763950306_13-laptop-platinum-right-render-fy25_VP4-1260x795.avif',1,'2025-11-24 02:11:36');
 /*!40000 ALTER TABLE `items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -144,7 +146,7 @@ CREATE TABLE `return_details` (
   CONSTRAINT `return_details_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`),
   CONSTRAINT `return_details_ibfk_3` FOREIGN KEY (`borrowing_detail_id`) REFERENCES `borrowing_details` (`id`),
   CONSTRAINT `return_details_ibfk_4` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -153,6 +155,7 @@ CREATE TABLE `return_details` (
 
 LOCK TABLES `return_details` WRITE;
 /*!40000 ALTER TABLE `return_details` DISABLE KEYS */;
+INSERT INTO `return_details` VALUES (4,3,5,9,1,'damaged','pengembalian_barang/1763949617_wallpaper761.png','pending',NULL,NULL,NULL,'2025-11-24 02:00:17'),(5,4,8,10,1,'good','pengembalian_barang/1763950431_13-laptop-platinum-right-render-fy25_VP4-1260x795.avif','pending',NULL,NULL,NULL,'2025-11-24 02:13:51'),(6,5,8,11,1,'good','pengembalian_barang/1763951405_1763950431_13-laptop-platinum-right-render-fy25_VP4-1260x795 (1).avif','pending',NULL,NULL,NULL,'2025-11-24 02:30:05');
 /*!40000 ALTER TABLE `return_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -181,7 +184,7 @@ CREATE TABLE `returns` (
   CONSTRAINT `returns_ibfk_1` FOREIGN KEY (`borrowing_id`) REFERENCES `borrowings` (`id`),
   CONSTRAINT `returns_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `returns_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -190,6 +193,7 @@ CREATE TABLE `returns` (
 
 LOCK TABLES `returns` WRITE;
 /*!40000 ALTER TABLE `returns` DISABLE KEYS */;
+INSERT INTO `returns` VALUES (3,8,11,'2025-11-24','approved','','2025-11-24 02:10:13',5,'2025-11-24 02:00:17','2025-11-24 02:10:13'),(4,9,11,'2025-11-24','approved','','2025-11-24 02:23:08',5,'2025-11-24 02:13:51','2025-11-24 02:23:08'),(5,10,11,'2025-11-24','approved','','2025-11-24 02:30:26',5,'2025-11-24 02:30:05','2025-11-24 02:30:26');
 /*!40000 ALTER TABLE `returns` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -237,4 +241,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-11-10 21:22:38
+-- Dump completed on 2025-11-25 10:57:11
