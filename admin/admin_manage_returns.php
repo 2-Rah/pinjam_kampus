@@ -17,6 +17,7 @@ if (isset($_POST['update_status'])) {
     $reason = $_POST['reason'] ?? null;
     $admin_id = $_SESSION['admin_id'];
 
+    // 1. Update return status
     $stmt = $conn->prepare("
         UPDATE returns 
         SET status = ?, rejection_reason = ?, approved_by = ?, approved_at = NOW() 
@@ -24,6 +25,68 @@ if (isset($_POST['update_status'])) {
     ");
     $stmt->bind_param("ssii", $status, $reason, $admin_id, $return_id);
     $stmt->execute();
+
+    // 2. Jika status disetujui (approved), update status borrowing ke completed DAN update stock barang
+    if ($status === 'approved') {
+        // Dapatkan borrowing_id dari return
+        $get_borrow_id = mysqli_query($conn, "
+            SELECT borrowing_id FROM returns WHERE id = $return_id
+        ");
+        $borrow_data = mysqli_fetch_assoc($get_borrow_id);
+        $borrowing_id = $borrow_data['borrowing_id'];
+        
+        // Update status borrowing ke 'completed'
+        mysqli_query($conn, "
+            UPDATE borrowings 
+            SET status = 'completed' 
+            WHERE id = $borrowing_id
+        ");
+
+        // 3. AMBIL SEMUA ITEM YANG DIKEMBALIKAN DAN UPDATE STOCK
+        $return_items = mysqli_query($conn, "
+            SELECT 
+                rd.item_id,
+                rd.quantity AS returned_qty,
+                rd.item_condition,
+                i.name AS item_name,
+                i.stock AS current_stock
+            FROM return_details rd
+            JOIN items i ON i.id = rd.item_id
+            WHERE rd.return_id = $return_id
+        ");
+
+        while ($item = mysqli_fetch_assoc($return_items)) {
+            $item_id = $item['item_id'];
+            $returned_qty = $item['returned_qty'];
+            $item_condition = $item['item_condition'];
+            $current_stock = $item['current_stock'];
+            $item_name = $item['item_name'];
+
+            // Hanya update stock jika kondisi barang BAIK (good)
+            if ($item_condition === 'good') {
+                $new_stock = $current_stock + $returned_qty;
+                
+                mysqli_query($conn, "
+                    UPDATE items 
+                    SET stock = $new_stock 
+                    WHERE id = $item_id
+                ");
+
+                // Log stock update (optional)
+                mysqli_query($conn, "
+                    INSERT INTO stock_logs (item_id, change_type, quantity, note, created_by)
+                    VALUES ($item_id, 'return', $returned_qty, 'Pengembalian barang #$return_id', $admin_id)
+                ");
+            } else {
+                // Jika barang rusak/hilang, tidak update stock (tetap dianggap habis)
+                // Atau bisa juga mengurangi stock tambahan untuk penggantian
+                mysqli_query($conn, "
+                    INSERT INTO stock_logs (item_id, change_type, quantity, note, created_by)
+                    VALUES ($item_id, 'damaged_return', 0, 'Barang $item_condition - tidak dikembalikan ke stock', $admin_id)
+                ");
+            }
+        }
+    }
 
     header("Location: admin_manage_returns.php?view=$return_id&updated=1");
     exit;
@@ -36,11 +99,13 @@ $list = mysqli_query($conn, "
     SELECT 
         r.id, 
         r.borrowing_id, 
+        b.title AS borrow_title,
         b.description AS borrow_desc,
         r.user_id, 
         r.status, 
         r.created_at, 
-        u.name AS username
+        u.name AS username,
+        b.status AS borrowing_status
     FROM returns r
     JOIN users u ON u.id = r.user_id
     JOIN borrowings b ON b.id = r.borrowing_id
@@ -60,7 +125,9 @@ if (isset($_GET['view'])) {
         SELECT 
             r.*, 
             u.name AS username,
-            b.description AS borrow_desc
+            b.title AS borrow_title,
+            b.description AS borrow_desc,
+            b.status AS borrowing_status
         FROM returns r
         JOIN users u ON u.id = r.user_id
         JOIN borrowings b ON b.id = r.borrowing_id
@@ -69,11 +136,14 @@ if (isset($_GET['view'])) {
 
     $detail = mysqli_fetch_assoc($d);
 
-    // Detail barang
+    // Detail barang dengan stock info
     $items = mysqli_query($conn, "
         SELECT 
             rd.*, 
             i.name AS item_name, 
+            i.type AS item_type,
+            i.category AS item_category,
+            i.stock AS current_stock,
             bd.quantity AS borrowed_qty
         FROM return_details rd
         JOIN items i ON i.id = rd.item_id
@@ -170,7 +240,7 @@ if (isset($_GET['view'])) {
             margin: 0 auto;
             padding: 24px 32px;
             gap: 24px;
-            height: calc(100vh - 80px - 64px); /* navbar + padding */
+            height: calc(100vh - 80px - 64px);
         }
 
         /* Sidebar List */
@@ -246,7 +316,9 @@ if (isset($_GET['view'])) {
             margin-bottom: 8px;
         }
 
-        .return-date {
+        .return-meta {
+            display: flex;
+            justify-content: space-between;
             font-size: 12px;
             color: #94a3b8;
         }
@@ -265,6 +337,18 @@ if (isset($_GET['view'])) {
         .status-approved   { background: #dcfce7; color: #166534; }
         .status-rejected   { background: #fee2e2; color: #b91c1c; }
         .status-completed  { background: #dcfce7; color: #166534; }
+
+        /* Status untuk borrowing */
+        .borrowing-status {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #e2e8f0;
+            color: #475569;
+            margin-left: 8px;
+        }
+
+        .borrowing-status.completed { background: #dcfce7; color: #166534; }
 
         /* Main Content */
         .main-content {
@@ -330,9 +414,16 @@ if (isset($_GET['view'])) {
         }
 
         .summary-status .summary-value {
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .borrow-status-info {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
         }
 
         table {
@@ -362,6 +453,94 @@ if (isset($_GET['view'])) {
 
         tr:last-child td {
             border-bottom: none;
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .item-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .item-type-badge {
+            background: #e0e7ff;
+            color: #4f46e5;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .item-category-badge {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .stock-info {
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stock-change {
+            font-size: 12px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .stock-increase {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .stock-no-change {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .condition-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .condition-good { 
+            background: #dcfce7; 
+            color: #166534; 
+            border: 1px solid #bbf7d0;
+        }
+        .condition-damaged { 
+            background: #fee2e2; 
+            color: #b91c1c; 
+            border: 1px solid #fecaca;
+        }
+        .condition-lost { 
+            background: #f3f4f6; 
+            color: #4b5563; 
+            border: 1px solid #e5e7eb;
+        }
+        .condition-needs_repair { 
+            background: #fef9c3; 
+            color: #92400e; 
+            border: 1px solid #fde68a;
         }
 
         .view-btn {
@@ -459,9 +638,45 @@ if (isset($_GET['view'])) {
             display: block;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Alert Warning */
+        .alert-warning {
+            padding: 12px 20px;
+            background: #fef3c7;
+            color: #92400e;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Alert Success */
+        .alert-success {
+            padding: 12px 20px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Stock Impact Notice */
+        .stock-impact-notice {
+            padding: 12px 16px;
+            background: #e0f2fe;
+            color: #0369a1;
+            border-radius: 8px;
+            margin: 16px 0;
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .stock-impact-notice h4 {
+            font-weight: 600;
+            margin-bottom: 4px;
         }
 
         /* Modal */
@@ -527,19 +742,6 @@ if (isset($_GET['view'])) {
             background: rgba(0,0,0,0.8);
         }
 
-        /* Success message */
-        .alert-success {
-            padding: 12px 20px;
-            background: #dcfce7;
-            color: #166534;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
         /* Responsive */
         @media (max-width: 900px) {
             .container {
@@ -578,7 +780,10 @@ if (isset($_GET['view'])) {
         <a href="admin_manage_role.php">User</a>
         <a href="admin_manage_items.php">Barang</a>
         <a href="admin_manage_borrowings.php">Peminjaman</a>
-        <a href="admin_manage_returns.php" style="position: relative;"><span>Pengembalian</span><span style="position:absolute; bottom:-2px; left:0; right:0; height:2px; background:white; transform:scaleX(1);"></span></a>
+        <a href="admin_manage_returns.php" style="position: relative;">
+            <span>Pengembalian</span>
+            <span style="position:absolute; bottom:-2px; left:0; right:0; height:2px; background:white; transform:scaleX(1);"></span>
+        </a>
         <a href="logout_admin.php">Logout</a>
     </div>
 </div>
@@ -596,11 +801,18 @@ if (isset($_GET['view'])) {
             $isActive = (isset($_GET['view']) && $_GET['view'] == $r['id']);
             ?>
                 <a href="admin_manage_returns.php?view=<?= $r['id'] ?>" class="return-card <?= $isActive ? 'active' : '' ?>">
-                    <div class="return-id">Return #<?= $r['id'] ?></div>
-                    <div class="return-title"><?= htmlspecialchars($r['borrow_desc']) ?></div>
+                    <div class="return-id">Return #<?= $r['id'] ?> • Borrow #<?= $r['borrowing_id'] ?></div>
+                    <div class="return-title">
+                        <?= htmlspecialchars($r['borrow_title'] ?: $r['borrow_desc']) ?>
+                        <?php if ($r['borrowing_status'] == 'completed'): ?>
+                            <span class="borrowing-status completed">completed</span>
+                        <?php endif; ?>
+                    </div>
                     <div class="return-user">oleh <?= htmlspecialchars($r['username']) ?></div>
-                    <div class="return-date"><?= date('d M Y H:i', strtotime($r['created_at'])) ?></div>
-                    <span class="status-badge status-<?= $r['status'] ?>"><?= $r['status'] ?></span>
+                    <div class="return-meta">
+                        <span><?= date('d M Y H:i', strtotime($r['created_at'])) ?></span>
+                        <span class="status-badge status-<?= $r['status'] ?>"><?= $r['status'] ?></span>
+                    </div>
                 </a>
             <?php endwhile; ?>
         </div>
@@ -627,11 +839,34 @@ if (isset($_GET['view'])) {
                     <p>👈 Silakan pilih pengembalian dari daftar di sebelah kiri.</p>
                 </div>
             <?php else: ?>
+                <!-- Borrowing Status Warning -->
+                <?php if ($detail['borrowing_status'] == 'completed'): ?>
+                    <div class="alert-warning">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Status peminjaman sudah <strong>completed</strong>. Tidak dapat mengubah status pengembalian.
+                    </div>
+                <?php endif; ?>
+
+                <!-- Stock Impact Notice -->
+                <?php if ($detail['status'] == 'pending'): ?>
+                    <div class="stock-impact-notice">
+                        <h4>Perhatikan Dampak Stock!</h4>
+                        <p>Jika pengembalian disetujui:</p>
+                        <ul style="margin: 8px 0 8px 20px; color: #0c4a6e;">
+                            <li>Barang dengan kondisi <strong>BAIK</strong> akan dikembalikan ke stock</li>
+                            <li>Barang <strong>rusak/hilang</strong> tidak akan ditambahkan ke stock</li>
+                            <li>Status peminjaman akan diubah menjadi <strong>completed</strong></li>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Summary Cards -->
                 <div class="summary-grid">
                     <div class="summary-card">
                         <div class="summary-label">Judul Peminjaman</div>
-                        <div class="summary-value"><?= htmlspecialchars($detail['borrow_desc']) ?></div>
+                        <div class="summary-value"><?= htmlspecialchars($detail['borrow_title'] ?: $detail['borrow_desc']) ?></div>
                     </div>
                     <div class="summary-card">
                         <div class="summary-label">Pengguna</div>
@@ -642,11 +877,14 @@ if (isset($_GET['view'])) {
                         <div class="summary-value"><?= date('d M Y H:i', strtotime($detail['created_at'])) ?></div>
                     </div>
                     <div class="summary-card summary-status">
-                        <div class="summary-label">Status</div>
+                        <div class="summary-label">Status Pengembalian</div>
                         <div class="summary-value">
                             <span class="status-badge status-<?= $detail['status'] ?>">
                                 <?= ucfirst($detail['status']) ?>
                             </span>
+                            <?php if ($detail['borrowing_status'] == 'completed'): ?>
+                                <span class="borrowing-status completed">completed</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -667,6 +905,7 @@ if (isset($_GET['view'])) {
                             <th>Dipinjam</th>
                             <th>Dikembalikan</th>
                             <th>Kondisi</th>
+                            <th>Dampak Stock</th>
                             <th>Foto</th>
                         </tr>
                     </thead>
@@ -674,12 +913,46 @@ if (isset($_GET['view'])) {
                         <?php 
                         mysqli_data_seek($items, 0);
                         while ($i = mysqli_fetch_assoc($items)): 
+                            // Tentukan dampak pada stock
+                            $stock_impact = '';
+                            $stock_class = '';
+                            if ($i['item_condition'] === 'good') {
+                                $stock_impact = "+{$i['quantity']}";
+                                $stock_class = 'stock-increase';
+                                $stock_message = "Stock akan ditambah {$i['quantity']}";
+                            } else {
+                                $stock_impact = "0";
+                                $stock_class = 'stock-no-change';
+                                $stock_message = ucwords($i['item_condition']) . " - tidak ditambahkan ke stock";
+                            }
                         ?>
                         <tr>
-                            <td><?= htmlspecialchars($i['item_name']) ?></td>
+                            <td>
+                                <div class="item-info">
+                                    <div class="item-name"><?= htmlspecialchars($i['item_name']) ?></div>
+                                    <div class="item-meta">
+                                        <span class="item-type-badge"><?= htmlspecialchars($i['item_type']) ?></span>
+                                        <?php if (!empty($i['item_category'])): ?>
+                                            <span class="item-category-badge"><?= htmlspecialchars($i['item_category']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="stock-info">
+                                        <span>Stock saat ini: <?= $i['current_stock'] ?></span>
+                                    </div>
+                                </div>
+                            </td>
                             <td><b><?= $i['borrowed_qty'] ?></b></td>
                             <td><?= $i['quantity'] ?></td>
-                            <td><?= htmlspecialchars(ucwords($i['item_condition'])) ?></td>
+                            <td>
+                                <span class="condition-badge condition-<?= $i['item_condition'] ?>" title="<?= ucwords(str_replace('_', ' ', $i['item_condition'])) ?>">
+                                    <?= ucwords(str_replace('_', ' ', $i['item_condition'])) ?>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="stock-change <?= $stock_class ?>" title="<?= $stock_message ?>">
+                                    <?= $stock_impact ?>
+                                </span>
+                            </td>
                             <td>
                                 <?php if (!empty($i['image'])): ?>
                                     <button class="view-btn" 
@@ -696,35 +969,53 @@ if (isset($_GET['view'])) {
                 </table>
 
                 <!-- Update Form -->
-                <div class="form-section">
-                    <h3>Perbarui Status Pengembalian</h3>
-                    <form method="POST" id="updateForm" onsubmit="return validateForm()">
-                        <input type="hidden" name="return_id" value="<?= $detail['id'] ?>">
+                <?php if ($detail['borrowing_status'] != 'completed'): ?>
+                    <div class="form-section">
+                        <h3>Perbarui Status Pengembalian</h3>
+                        <form method="POST" id="updateForm" onsubmit="return validateForm()">
+                            <input type="hidden" name="return_id" value="<?= $detail['id'] ?>">
 
-                        <div class="form-group">
-                            <label for="status">Status</label>
-                            <select name="status" id="status" required onchange="toggleReasonField()">
-                                <option value="pending"    <?= $detail['status']=='pending'   ?'selected':'' ?>>Pending</option>
-                                <option value="approved"   <?= $detail['status']=='approved'  ?'selected':'' ?>>Disetujui</option>
-                                <option value="rejected"   <?= $detail['status']=='rejected'  ?'selected':'' ?>>Ditolak</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <div class="reason-container" id="reasonContainer">
-                                <label for="reason">Alasan Penolakan (Opsional)</label>
-                                <textarea name="reason" id="reason" rows="3" placeholder="Tulis alasan penolakan..."><?= htmlspecialchars($detail['rejection_reason'] ?? '') ?></textarea>
+                            <div class="form-group">
+                                <label for="status">Status</label>
+                                <select name="status" id="status" required onchange="toggleReasonField()">
+                                    <option value="pending"    <?= $detail['status']=='pending'   ?'selected':'' ?>>Pending</option>
+                                    <option value="approved"   <?= $detail['status']=='approved'  ?'selected':'' ?>>Disetujui</option>
+                                    <option value="rejected"   <?= $detail['status']=='rejected'  ?'selected':'' ?>>Ditolak</option>
+                                </select>
+                                <small style="color:#64748b; display:block; margin-top:4px;">
+                                    Jika disetujui:
+                                    <ul style="margin: 4px 0 0 20px; color: #475569;">
+                                        <li>Status peminjaman akan diubah menjadi "completed"</li>
+                                        <li>Barang dengan kondisi BAIK akan dikembalikan ke stock</li>
+                                        <li>Barang rusak/hilang tidak akan ditambahkan ke stock</li>
+                                    </ul>
+                                </small>
                             </div>
-                        </div>
 
-                        <button type="submit" name="update_status" class="btn-submit">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                            Simpan Perubahan
-                        </button>
-                    </form>
-                </div>
+                            <div class="form-group">
+                                <div class="reason-container" id="reasonContainer">
+                                    <label for="reason">Alasan Penolakan (Opsional)</label>
+                                    <textarea name="reason" id="reason" rows="3" placeholder="Tulis alasan penolakan..."><?= htmlspecialchars($detail['rejection_reason'] ?? '') ?></textarea>
+                                </div>
+                            </div>
+
+                            <button type="submit" name="update_status" class="btn-submit">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Simpan Perubahan
+                            </button>
+                        </form>
+                    </div>
+                <?php else: ?>
+                    <div class="form-section" style="background:#f8fafc; border-color:#d1fae5;">
+                        <h3 style="color:#166534;">Pengembalian Telah Selesai</h3>
+                        <p style="color:#475569; margin-bottom:0;">
+                            Peminjaman ini sudah berstatus <strong>completed</strong>. 
+                            Status pengembalian tidak dapat diubah lagi.
+                        </p>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
@@ -761,6 +1052,19 @@ if (isset($_GET['view'])) {
                 if (!confirm('Status pengembalian akan ditetapkan sebagai "Ditolak" tanpa alasan. Lanjutkan?')) {
                     return false;
                 }
+            }
+        }
+        
+        if (status === 'approved') {
+            let message = 'Apakah Anda yakin ingin menyetujui pengembalian ini?\n\n';
+            message += 'Dampak yang akan terjadi:\n';
+            message += '1. Status peminjaman akan diubah menjadi "completed"\n';
+            message += '2. Barang dengan kondisi BAIK akan dikembalikan ke stock\n';
+            message += '3. Barang rusak/hilang TIDAK akan ditambahkan ke stock\n\n';
+            message += 'Lanjutkan?';
+            
+            if (!confirm(message)) {
+                return false;
             }
         }
         
