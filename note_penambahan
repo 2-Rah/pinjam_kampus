@@ -1,7 +1,7 @@
 tambah
 retuturn barang sisi admin user (belum optimal)
 -rertun tambahin keterangan type item
-di list peminjaman tambahin tanggal berapa harus di kembalikan (auto 3 hari setelah dipinjam)
+di list peminjaman tambahin tanggal berapa harus di kembalikan (auto 3 hari setelah dipinjam) optopnal
 perbaiki tampilan dan hrefnya
 tambah tombol kembali disetiap page
 cek fiturnya lagi (banyak yang harus di revisi)
@@ -10,3 +10,5 @@ hosting
 kalo bisa
 buat sistem laporan kek buat laporan bukti peminjaman barang dan laporan administrasi dari admin di setiap bulannya
 terus buat validasi input buat barang dan lain lain.
+
+nanti test webnya sebelum di demo, 

@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("ssss", $name, $email, $nim_nip, $hashed_password);
 
             if ($stmt->execute()) {
-                $success = "Registrasi berhasil! Silakan login.";
+                $success = "Registrasi berhasil! Registrasi anda sedang diperiksa oleh admin.";
             } else {
                 $error = "Terjadi kesalahan saat menyimpan data.";
             }

@@ -448,6 +448,22 @@ if (isset($_GET['view'])) {
             transform: translateY(0);
         }
 
+        /* Reason Field Container */
+        .reason-container {
+            display: none;
+            margin-top: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .reason-container.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         /* Modal */
         .modal {
             display: none;
@@ -682,12 +698,12 @@ if (isset($_GET['view'])) {
                 <!-- Update Form -->
                 <div class="form-section">
                     <h3>Perbarui Status Pengembalian</h3>
-                    <form method="POST">
+                    <form method="POST" id="updateForm" onsubmit="return validateForm()">
                         <input type="hidden" name="return_id" value="<?= $detail['id'] ?>">
 
                         <div class="form-group">
                             <label for="status">Status</label>
-                            <select name="status" id="status" required>
+                            <select name="status" id="status" required onchange="toggleReasonField()">
                                 <option value="pending"    <?= $detail['status']=='pending'   ?'selected':'' ?>>Pending</option>
                                 <option value="approved"   <?= $detail['status']=='approved'  ?'selected':'' ?>>Disetujui</option>
                                 <option value="rejected"   <?= $detail['status']=='rejected'  ?'selected':'' ?>>Ditolak</option>
@@ -695,8 +711,10 @@ if (isset($_GET['view'])) {
                         </div>
 
                         <div class="form-group">
-                            <label for="reason">Catatan / Alasan Penolakan (Opsional)</label>
-                            <textarea name="reason" id="reason" rows="3" placeholder="Tulis alasan jika menolak..."><?= htmlspecialchars($detail['rejection_reason'] ?? '') ?></textarea>
+                            <div class="reason-container" id="reasonContainer">
+                                <label for="reason">Alasan Penolakan (Opsional)</label>
+                                <textarea name="reason" id="reason" rows="3" placeholder="Tulis alasan penolakan..."><?= htmlspecialchars($detail['rejection_reason'] ?? '') ?></textarea>
+                            </div>
                         </div>
 
                         <button type="submit" name="update_status" class="btn-submit">
@@ -721,6 +739,40 @@ if (isset($_GET['view'])) {
 </div>
 
 <script>
+    // Function to toggle reason field based on status selection
+    function toggleReasonField() {
+        const status = document.getElementById('status').value;
+        const reasonContainer = document.getElementById('reasonContainer');
+        
+        if (status === 'rejected') {
+            reasonContainer.classList.add('show');
+        } else {
+            reasonContainer.classList.remove('show');
+        }
+    }
+
+    // Form validation
+    function validateForm() {
+        const status = document.getElementById('status').value;
+        
+        if (status === 'rejected') {
+            const reason = document.getElementById('reason').value;
+            if (reason.trim() === '') {
+                if (!confirm('Status pengembalian akan ditetapkan sebagai "Ditolak" tanpa alasan. Lanjutkan?')) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    // Initialize reason field visibility on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleReasonField();
+    });
+
+    // Image modal functions
     function openModal(src) {
         const modal = document.getElementById("imgModal");
         const img = document.getElementById("modalImage");

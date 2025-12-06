@@ -32,9 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_item'])) {
     $stmt = $conn->prepare("INSERT INTO items (name, type, category, stock, capacity, description, image) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("sssisss", $name, $type, $category, $stock, $capacity, $description, $image_name);
     if ($stmt->execute()) {
-        echo "<script>alert('Item berhasil ditambahkan!');</script>";
+        $success_message = 'Item berhasil ditambahkan!';
     } else {
-        echo "<script>alert('Gagal menambah item: " . addslashes($stmt->error) . "');</script>";
+        $error_message = 'Gagal menambah item: ' . $stmt->error;
     }
     $stmt->close();
 }
@@ -67,9 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_item'])) {
     }
 
     if ($stmt->execute()) {
-        echo "<script>alert('Item berhasil diupdate!');</script>";
+        $success_message = 'Item berhasil diupdate!';
     } else {
-        echo "<script>alert('Gagal update item: " . addslashes($stmt->error) . "');</script>";
+        $error_message = 'Gagal update item: ' . $stmt->error;
     }
     $stmt->close();
 }
@@ -87,8 +87,7 @@ if (isset($_GET['delete'])) {
 
     if ($cnt > 0) {
         // item masih dipakai, batalkan penghapusan
-        echo "<script>alert('Tidak bisa menghapus item ini karena masih digunakan di peminjaman. Hapus dependensi peminjaman terlebih dahulu.'); window.location.href='admin_manage_items.php';</script>";
-        exit;
+        $error_message = 'Tidak bisa menghapus item ini karena masih digunakan di peminjaman. Hapus dependensi peminjaman terlebih dahulu.';
     } else {
         // ambil nama file gambar (untuk dihapus dari server jika ada)
         $g = $conn->prepare("SELECT image FROM items WHERE id = ?");
@@ -105,11 +104,11 @@ if (isset($_GET['delete'])) {
             if (!empty($resg['image']) && file_exists("../gambar_item/" . $resg['image'])) {
                 @unlink("../gambar_item/" . $resg['image']);
             }
+            $success_message = 'Item berhasil dihapus!';
             header('Location: admin_manage_items.php');
             exit;
         } else {
-            echo "<script>alert('Gagal menghapus item: " . addslashes($stmt->error) . "'); window.location.href='admin_manage_items.php';</script>";
-            exit;
+            $error_message = 'Gagal menghapus item: ' . $stmt->error;
         }
     }
 }
@@ -140,7 +139,7 @@ body {
     line-height: 1.6;
 }
 
-/* NAVBAR */
+/* NAVBAR SAMA PERSIS */
 .navbar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -198,6 +197,16 @@ body {
     transform: scaleX(1);
 }
 
+/* ACTIVE LINK: Barang */
+.navbar-links a[href="admin_manage_items.php"]::after,
+.navbar-links a[href="admin_manage_items.php"]:hover::after {
+    transform: scaleX(1);
+}
+
+.navbar-links a[href="admin_manage_items.php"] {
+    background: rgba(255, 255, 255, 0.25);
+}
+
 /* CONTAINER */
 .container {
     max-width: 1400px;
@@ -212,6 +221,7 @@ body {
     border-radius: 16px;
     margin-bottom: 24px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    animation: slideUp 0.6s ease-out;
 }
 
 .header h1 {
@@ -227,6 +237,47 @@ body {
     font-size: 16px;
 }
 
+/* MESSAGE STYLING */
+.message {
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.5s ease-out;
+}
+
+.message.success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: 1px solid #a7f3d0;
+}
+
+.message.error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: 1px solid #fecaca;
+}
+
+.message svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* FORM SECTIONS */
 .form-section {
     background: white;
@@ -234,6 +285,7 @@ body {
     border-radius: 16px;
     margin-bottom: 32px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    animation: slideUp 0.6s ease-out 0.1s both;
 }
 
 .form-section h3 {
@@ -249,7 +301,7 @@ body {
 .form-section h3 svg {
     width: 20px;
     height: 20px;
-    fill: currentColor;
+    fill: #667eea;
 }
 
 .form-grid {
@@ -270,7 +322,7 @@ body {
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
-    color: #374151;
+    color: #475569;
     font-size: 14px;
 }
 
@@ -323,6 +375,7 @@ body {
 }
 
 .btn-primary:hover {
+    opacity: 0.9;
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
 }
@@ -345,6 +398,7 @@ body {
 }
 
 .btn-warning:hover {
+    opacity: 0.9;
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
 }
@@ -356,6 +410,7 @@ body {
 }
 
 .btn-danger:hover {
+    opacity: 0.9;
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
 }
@@ -370,7 +425,6 @@ body {
     background: white;
     border-radius: 16px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
     margin-bottom: 32px;
 }
 
@@ -455,6 +509,7 @@ tr:hover {
     border-radius: 8px;
     object-fit: cover;
     border: 2px solid #e2e8f0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 /* ACTION CELLS */
@@ -468,7 +523,7 @@ tr:hover {
 .modal {
     display: none;
     position: fixed;
-    z-index: 1000;
+    z-index: 1001;
     left: 0;
     top: 0;
     width: 100%;
@@ -509,20 +564,22 @@ tr:hover {
 .modal-header h3 svg {
     width: 20px;
     height: 20px;
-    fill: currentColor;
+    fill: #667eea;
 }
 
 .close {
     font-size: 24px;
     cursor: pointer;
     color: #64748b;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
     width: 32px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 6px;
+    background: none;
+    border: none;
 }
 
 .close:hover {
@@ -628,18 +685,39 @@ tr:hover {
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- NAVBAR SAMA PERSIS -->
 <div class="navbar">
     <div class="navbar-brand">Admin Sistem Peminjaman</div>
     <div class="navbar-links">
         <a href="admin_dashboard.php">Dashboard</a>
         <a href="admin_manage_role.php">User</a>
+        <a href="admin_manage_items.php">Barang</a>
         <a href="admin_manage_borrowings.php">Peminjaman</a>
+        <a href="admin_manage_returns.php">Pengembalian</a>
         <a href="logout_admin.php">Logout</a>
     </div>
 </div>
 
 <div class="container">
+    <!-- MESSAGES -->
+    <?php if (isset($success_message)): ?>
+    <div class="message success">
+        <svg viewBox="0 0 24 24">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+        </svg>
+        <span><?= htmlspecialchars($success_message) ?></span>
+    </div>
+    <?php endif; ?>
+    
+    <?php if (isset($error_message)): ?>
+    <div class="message error">
+        <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        <span><?= htmlspecialchars($error_message) ?></span>
+    </div>
+    <?php endif; ?>
+
     <div class="header">
         <h1>Kelola Barang & Ruangan</h1>
         <p>Tambah, edit, atau hapus barang dan ruangan yang tersedia untuk peminjaman</p>
@@ -755,7 +833,9 @@ tr:hover {
                             <?php if($item['image']): ?>
                                 <img src="../gambar_item/<?= $item['image'] ?>" alt="<?= htmlspecialchars($item['name']) ?>" class="item-image">
                             <?php else: ?>
-                                <div style="color: #94a3b8; font-style: italic;">No image</div>
+                                <div class="item-image" style="display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                    <?= strtoupper(substr($item['name'], 0, 1)) ?>
+                                </div>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -804,7 +884,7 @@ tr:hover {
                 </svg>
                 Edit Item
             </h3>
-            <span class="close" onclick="closeModal()">&times;</span>
+            <button class="close" onclick="closeModal()">&times;</button>
         </div>
         <form method="POST" id="editForm" enctype="multipart/form-data">
             <input type="hidden" name="id" id="edit_id">

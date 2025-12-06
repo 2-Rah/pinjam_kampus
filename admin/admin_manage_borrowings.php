@@ -12,26 +12,38 @@ if (!isset($_SESSION['admin_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     $id = intval($_POST['borrowing_id']);
     $status = $_POST['status'];
+    $pickup_location = isset($_POST['pickup_location']) ? $conn->real_escape_string($_POST['pickup_location']) : null;
 
-    $allowed = ['pending','approved','rejected','picked_up'];
+    $allowed = ['pending','approved','rejected','picked_up','completed','not_returned'];
     if (!in_array($status, $allowed)) {
         $status = 'pending';
     }
 
-    $stmt = $conn->prepare("UPDATE borrowings SET status=? WHERE id=?");
-    $stmt->bind_param("si", $status, $id);
+    // Update query dengan pickup_location
+    if ($status == 'approved' && $pickup_location) {
+        $stmt = $conn->prepare("UPDATE borrowings SET status=?, pickup_location=? WHERE id=?");
+        $stmt->bind_param("ssi", $status, $pickup_location, $id);
+    } else {
+        $stmt = $conn->prepare("UPDATE borrowings SET status=? WHERE id=?");
+        $stmt->bind_param("si", $status, $id);
+    }
+    
     $stmt->execute();
 
     header("Location: admin_manage_borrowings.php?msg=status_updated");
     exit;
 }
 
-// ambil data
+// ambil data dengan informasi tambahan - DIKOREKSI: removed picked_up_at
 $sql = "
-SELECT b.id, b.user_id, b.status, b.created_at, b.description,
-       u.name AS user_name
+SELECT b.id, b.user_id, b.status, b.created_at, b.description, b.title, b.judul, 
+       b.pickup_location, b.start_date, b.end_date,
+       u.name AS user_name,
+       COUNT(d.id) as item_count
 FROM borrowings b
 JOIN users u ON b.user_id = u.id
+LEFT JOIN borrowing_details d ON b.id = d.borrowing_id
+GROUP BY b.id
 ORDER BY b.created_at DESC
 ";
 $borrowings = $conn->query($sql);
@@ -59,7 +71,7 @@ body {
     line-height: 1.6;
 }
 
-/* NAVBAR */
+/* NAVBAR SAMA PERSIS */
 .navbar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -117,9 +129,19 @@ body {
     transform: scaleX(1);
 }
 
+/* ACTIVE LINK: Peminjaman */
+.navbar-links a[href="admin_manage_borrowings.php"]::after,
+.navbar-links a[href="admin_manage_borrowings.php"]:hover::after {
+    transform: scaleX(1);
+}
+
+.navbar-links a[href="admin_manage_borrowings.php"] {
+    background: rgba(255, 255, 255, 0.25);
+}
+
 /* CONTAINER */
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 32px;
 }
@@ -170,6 +192,48 @@ body {
     }
 }
 
+/* FILTER SECTION */
+.filter-section {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    margin-bottom: 24px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 200px;
+}
+
+.filter-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
+}
+
+.filter-select {
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 /* TABLE STYLING */
 .table-container {
     background: white;
@@ -198,9 +262,9 @@ th {
 }
 
 td {
-    padding: 20px;
+    padding: 16px 20px;
     border-bottom: 1px solid #f1f5f9;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 tr:last-child td {
@@ -219,6 +283,9 @@ tr:hover {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .status-pending {
@@ -241,11 +308,22 @@ tr:hover {
     color: #2563eb;
 }
 
+.status-completed {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.status-not_returned {
+    background: #fde68a;
+    color: #92400e;
+}
+
 /* FORM ELEMENTS */
 .form-group {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .select-wrapper {
@@ -255,10 +333,10 @@ tr:hover {
 
 .select-wrapper select {
     width: 100%;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 12px;
     font-family: inherit;
     background: white;
     cursor: pointer;
@@ -269,11 +347,11 @@ tr:hover {
 .select-wrapper::after {
     content: '';
     position: absolute;
-    right: 12px;
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-right: 2px solid #64748b;
     border-bottom: 2px solid #64748b;
     transform: translateY(-60%) rotate(45deg);
@@ -288,29 +366,29 @@ tr:hover {
 
 /* BUTTONS */
 .btn {
-    padding: 10px 20px;
+    padding: 8px 16px;
     border: none;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-family: inherit;
 }
 
 .btn-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .btn-secondary {
@@ -327,17 +405,23 @@ tr:hover {
 .btn-success {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: white;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .btn-success:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
-.btn-sm {
-    padding: 8px 16px;
-    font-size: 13px;
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.btn-warning:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
 }
 
 /* ACTION CELLS */
@@ -345,6 +429,76 @@ tr:hover {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
+}
+
+/* INFO CHIPS */
+.info-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: #f1f5f9;
+    border-radius: 20px;
+    font-size: 11px;
+    color: #475569;
+    margin-top: 4px;
+    margin-right: 4px;
+}
+
+.info-chip svg {
+    width: 10px;
+    height: 10px;
+    fill: #64748b;
+}
+
+.pickup-chip {
+    background: #f0f9ff;
+    color: #0369a1;
+}
+
+.date-chip {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* BORROWING INFO */
+.borrowing-title {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.borrowing-description {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* DATE INFO */
+.date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.date-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.date-item svg {
+    width: 10px;
+    height: 10px;
+    fill: #64748b;
 }
 
 /* EMPTY STATE */
@@ -366,6 +520,119 @@ tr:hover {
     font-weight: 600;
     margin-bottom: 8px;
     color: #475569;
+}
+
+/* MODAL */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalIn 0.3s ease-out;
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+}
+
+.modal-close:hover {
+    background: #f1f5f9;
+}
+
+.modal-body {
+    margin-bottom: 24px;
+}
+
+.modal-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.modal-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    margin-bottom: 16px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    margin-bottom: 16px;
+}
+
+.modal-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
 }
 
 /* RESPONSIVE */
@@ -390,17 +657,25 @@ tr:hover {
         align-items: flex-start;
     }
 
+    .filter-section {
+        flex-direction: column;
+    }
+
+    .filter-group {
+        min-width: 100%;
+    }
+
     .table-container {
         overflow-x: auto;
     }
 
     table {
-        min-width: 800px;
+        min-width: 1000px;
     }
 
     .action-cell {
         flex-direction: column;
-        gap: 8px;
+        align-items: flex-start;
     }
 
     .form-group {
@@ -408,11 +683,28 @@ tr:hover {
         align-items: stretch;
     }
 }
+
+/* ANIMATIONS */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+tbody tr {
+    opacity: 0;
+    animation: slideIn 0.5s ease-out forwards;
+}
 </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- NAVBAR SAMA PERSIS -->
 <div class="navbar">
     <div class="navbar-brand">Admin Sistem Peminjaman</div>
     <div class="navbar-links">
@@ -420,6 +712,7 @@ tr:hover {
         <a href="admin_manage_role.php">User</a>
         <a href="admin_manage_items.php">Barang</a>
         <a href="admin_manage_borrowings.php">Peminjaman</a>
+        <a href="admin_manage_returns.php">Pengembalian</a>
         <a href="logout_admin.php">Logout</a>
     </div>
 </div>
@@ -438,58 +731,142 @@ tr:hover {
     </div>
     <?php endif; ?>
 
+    <!-- FILTER SECTION -->
+    <div class="filter-section">
+        <div class="filter-group">
+            <label>Filter Status</label>
+            <select class="filter-select" id="statusFilter">
+                <option value="">Semua Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="picked_up">Picked Up</option>
+                <option value="completed">Completed</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Urutkan Berdasarkan</label>
+            <select class="filter-select" id="sortFilter">
+                <option value="newest">Terbaru</option>
+                <option value="oldest">Terlama</option>
+            </select>
+        </div>
+    </div>
+
     <div class="table-container">
         <table>
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Deskripsi</th>
+                    <th>Judul / Deskripsi</th>
                     <th>Peminjam</th>
                     <th>Tanggal</th>
                     <th>Status</th>
-                    <th>Detail</th>
+                    <th>Info</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if ($borrowings->num_rows > 0): ?>
-                    <?php while ($row = $borrowings->fetch_assoc()): ?>
+                    <?php while ($row = $borrowings->fetch_assoc()): 
+                        // Cek apakah sudah ada return yang approved
+                        $return_check = $conn->query("
+                            SELECT status FROM returns 
+                            WHERE borrowing_id = {$row['id']} AND status = 'approved'
+                        ")->fetch_assoc();
+                        
+                        // Update status jika perlu
+                        if ($return_check && $row['status'] == 'picked_up') {
+                            $conn->query("UPDATE borrowings SET status = 'completed' WHERE id = {$row['id']}");
+                            $row['status'] = 'completed';
+                        }
+                        
+                        // Format judul (gunakan judul atau title)
+                        $judul = !empty($row['judul']) ? $row['judul'] : $row['title'];
+                    ?>
                     <tr>
                         <td>#<?= $row['id'] ?></td>
-                        <td><?= htmlspecialchars($row['description']) ?></td>
+                        <td style="min-width: 250px;">
+                            <span class="borrowing-title">
+                                <?= htmlspecialchars($judul ?: 'Tidak ada judul') ?>
+                            </span>
+                            <?php if (!empty($row['description'])): ?>
+                            <div class="borrowing-description">
+                                <?= htmlspecialchars($row['description']) ?>
+                            </div>
+                            <?php endif; ?>
+                            <div class="date-info">
+                                <div class="date-item">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
+                                    </svg>
+                                    Mulai: <?= date('d M Y', strtotime($row['start_date'])) ?>
+                                </div>
+                                <div class="date-item">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
+                                    </svg>
+                                    Selesai: <?= date('d M Y', strtotime($row['end_date'])) ?>
+                                </div>
+                            </div>
+                        </td>
                         <td><?= htmlspecialchars($row['user_name']) ?></td>
-                        <td><?= date('d M Y H:i', strtotime($row['created_at'])) ?></td>
+                        <td>
+                            <?= date('d M Y H:i', strtotime($row['created_at'])) ?>
+                        </td>
                         <td>
                             <span class="status-badge status-<?= $row['status'] ?>">
                                 <?= $row['status'] ?>
                             </span>
                         </td>
                         <td>
-                            <a href="admin_view_borrowing.php?id=<?= $row['id'] ?>" class="btn btn-secondary btn-sm">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                                </svg>
-                                Lihat
-                            </a>
+                            <div>
+                                <span class="info-chip">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                                    </svg>
+                                    <?= $row['item_count'] ?> barang
+                                </span>
+                                <?php if ($row['pickup_location']): ?>
+                                <span class="info-chip pickup-chip">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                                    </svg>
+                                    <?= htmlspecialchars(mb_strimwidth($row['pickup_location'], 0, 20, '...')) ?>
+                                </span>
+                                <?php endif; ?>
+                            </div>
                         </td>
                         <td>
-                            <form method="POST" class="form-group">
-                                <input type="hidden" name="borrowing_id" value="<?= $row['id'] ?>">
-                                <div class="select-wrapper">
-                                    <select name="status">
-                                        <option value="pending" <?= $row['status']=='pending'?'selected':'' ?>>Pending</option>
-                                        <option value="approved" <?= $row['status']=='approved'?'selected':'' ?>>Approved</option>
-                                        <option value="rejected" <?= $row['status']=='rejected'?'selected':'' ?>>Rejected</option>
-                                        <option value="picked_up" <?= $row['status']=='picked_up'?'selected':'' ?>>Picked Up</option>
-                                    </select>
-                                </div>
-                                <button type="submit" name="update_status" class="btn btn-success btn-sm">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                            <div class="action-cell">
+                                <a href="admin_borrowing_detail.php?id=<?= $row['id'] ?>" class="btn btn-secondary">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/>
                                     </svg>
-                                    Simpan
-                                </button>
-                            </form>
+                                    Detail
+                                </a>
+                                <?php if ($row['status'] == 'picked_up'): ?>
+                                <?php 
+                                // Cek apakah sudah ada pengembalian
+                                $return_exists = $conn->query("SELECT id FROM returns WHERE borrowing_id = {$row['id']}")->fetch_assoc();
+                                ?>
+                                <?php if ($return_exists): ?>
+                                <a href="admin_return_detail.php?borrowing_id=<?= $row['id'] ?>" class="btn btn-success">
+                                    <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: white;">
+                                        <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.69 2.8l1.46 1.46C19.54 16.02 20 14.57 20 13c0-4.42-3.58-8-8-8zm-6.31 3.2L4.23 6.74C3.46 8 3 9.43 3 11c0 4.42 3.58 8 8 8v4l5-5-5-5v4c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.69-2.8z"/>
+                                    </svg>
+                                    Return
+                                </a>
+                                <?php else: ?>
+                                <span class="btn btn-warning" style="cursor: default;">
+                                    <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: white;">
+                                        <path d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                                    </svg>
+                                    Belum Return
+                                </span>
+                                <?php endif; ?>
+                                <?php endif; ?>
+                            </div>
                         </td>
                     </tr>
                     <?php endwhile; ?>
@@ -511,35 +888,165 @@ tr:hover {
     </div>
 </div>
 
+<!-- MODAL UNTUK UPDATE STATUS -->
+<div class="modal-overlay" id="statusModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Ubah Status Peminjaman</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form method="POST" id="statusForm">
+            <input type="hidden" name="borrowing_id" id="modalBorrowingId">
+            <div class="modal-body">
+                <label class="modal-label">Status Baru</label>
+                <select name="status" class="modal-select" id="modalStatus" onchange="togglePickupLocation()" required>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="picked_up">Picked Up</option>
+                    <option value="completed">Completed</option>
+                </select>
+                
+                <div id="pickupLocationSection" style="display: none;">
+                    <label class="modal-label">Lokasi Pengambilan Barang</label>
+                    <input type="text" 
+                           name="pickup_location" 
+                           class="modal-input" 
+                           id="modalPickupLocation"
+                           placeholder="Masukkan lokasi pengambilan barang">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button>
+                <button type="submit" name="update_status" class="btn btn-primary">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-// Add smooth animations
+// Variables
+let currentBorrowingId = null;
+let currentPickupLocation = null;
+
+// Open modal function
+function openStatusModal(id, currentStatus, pickupLocation = '') {
+    currentBorrowingId = id;
+    currentPickupLocation = pickupLocation;
+    
+    document.getElementById('modalBorrowingId').value = id;
+    document.getElementById('modalStatus').value = currentStatus;
+    document.getElementById('modalPickupLocation').value = pickupLocation;
+    
+    // Show/hide pickup location based on selected status
+    togglePickupLocation();
+    
+    // Show modal
+    document.getElementById('statusModal').style.display = 'flex';
+}
+
+// Close modal function
+function closeModal() {
+    document.getElementById('statusModal').style.display = 'none';
+}
+
+// Toggle pickup location field
+function togglePickupLocation() {
+    const status = document.getElementById('modalStatus').value;
+    const pickupSection = document.getElementById('pickupLocationSection');
+    const pickupInput = document.getElementById('modalPickupLocation');
+    
+    if (status === 'approved') {
+        pickupSection.style.display = 'block';
+        pickupInput.required = true;
+    } else {
+        pickupSection.style.display = 'none';
+        pickupInput.required = false;
+    }
+}
+
+// Filter table by status
+document.getElementById('statusFilter').addEventListener('change', function() {
+    const filterValue = this.value.toLowerCase();
+    const rows = document.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const statusCell = row.querySelector('.status-badge');
+        if (statusCell) {
+            const rowStatus = statusCell.textContent.toLowerCase().trim();
+            if (!filterValue || rowStatus === filterValue) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+});
+
+// Sort table by date
+document.getElementById('sortFilter').addEventListener('change', function() {
+    const sortValue = this.value;
+    const table = document.querySelector('tbody');
+    const rows = Array.from(table.querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        const dateA = new Date(a.querySelector('td:nth-child(4)').textContent.split('Diambil')[0].trim());
+        const dateB = new Date(b.querySelector('td:nth-child(4)').textContent.split('Diambil')[0].trim());
+        
+        if (sortValue === 'newest') {
+            return dateB - dateA;
+        } else {
+            return dateA - dateB;
+        }
+    });
+    
+    // Remove existing rows
+    rows.forEach(row => row.remove());
+    
+    // Add sorted rows
+    rows.forEach(row => table.appendChild(row));
+});
+
+// Add animation delays for rows
 document.addEventListener('DOMContentLoaded', function() {
     const rows = document.querySelectorAll('tbody tr');
     rows.forEach((row, index) => {
         row.style.animationDelay = `${index * 0.1}s`;
-        row.style.animation = 'slideIn 0.5s ease-out forwards';
+    });
+    
+    // Close modal when clicking outside
+    document.getElementById('statusModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
     });
 });
 
-// Add CSS for row animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
+// Confirm before rejecting
+document.getElementById('statusForm').addEventListener('submit', function(e) {
+    const status = document.getElementById('modalStatus').value;
+    
+    if (status === 'rejected') {
+        if (!confirm('Apakah Anda yakin ingin menolak peminjaman ini?')) {
+            e.preventDefault();
         }
     }
     
-    tbody tr {
-        opacity: 0;
+    if (status === 'approved') {
+        const pickupLocation = document.getElementById('modalPickupLocation').value;
+        if (!pickupLocation.trim()) {
+            alert('Harap isi lokasi pengambilan barang untuk status Approved');
+            e.preventDefault();
+        }
     }
-`;
-document.head.appendChild(style);
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
 </script>
 
 </body>
