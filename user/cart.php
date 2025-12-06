@@ -18,7 +18,7 @@ $total_items = count($cart);
     <title>Keranjang Peminjaman • Sistem Peminjaman</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -28,16 +28,90 @@ $total_items = count($cart);
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            color: #333;
+            background: #f8fafc;
+            color: #1e293b;
             line-height: 1.6;
-            min-height: 100vh;
+        }
+
+        /* NAVBAR BARU - SAMA SEPERTI SEBELUMNYA */
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-brand {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-links a:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .navbar-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 16px;
+            right: 16px;
+            height: 2px;
+            background: white;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-links a:hover::after {
+            transform: scaleX(1);
+        }
+
+        /* ACTIVE LINK: Keranjang */
+        .navbar-links a[href="cart.php"]::after,
+        .navbar-links a[href="cart.php"]:hover::after {
+            transform: scaleX(1);
+        }
+
+        /* Cart Badge in Navbar */
+        .cart-badge-nav {
+            background: #ff5722;
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
         }
 
         .container {
             max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 32px auto;
+            padding: 0 32px;
         }
 
         /* Header */
@@ -46,16 +120,17 @@ $total_items = count($cart);
             justify-content: space-between;
             align-items: center;
             margin-bottom: 30px;
-            padding: 20px;
+            padding: 24px;
             background: white;
             border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            animation: fadeIn 0.6s ease-out;
         }
 
         .header h1 {
             font-size: 28px;
             font-weight: 700;
-            color: #2d3748;
+            color: #1e293b;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -78,32 +153,6 @@ $total_items = count($cart);
             gap: 6px;
         }
 
-        .nav-links {
-            display: flex;
-            gap: 15px;
-        }
-
-        .nav-btn {
-            padding: 10px 20px;
-            background: white;
-            color: #667eea;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            border: 2px solid #667eea;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-btn:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
         /* Empty State */
         .empty-state {
             background: white;
@@ -112,23 +161,25 @@ $total_items = count($cart);
             text-align: center;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             margin-top: 20px;
+            animation: fadeIn 0.6s ease-out;
         }
 
-        .empty-state img {
+        .empty-state svg {
             width: 200px;
             height: 200px;
-            opacity: 0.7;
+            stroke: #cbd5e0;
+            stroke-width: 1;
             margin-bottom: 24px;
         }
 
         .empty-state h3 {
             font-size: 24px;
-            color: #4a5568;
+            color: #475569;
             margin-bottom: 12px;
         }
 
         .empty-state p {
-            color: #718096;
+            color: #64748b;
             margin-bottom: 30px;
             font-size: 16px;
         }
@@ -140,6 +191,7 @@ $total_items = count($cart);
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             overflow: hidden;
             margin-bottom: 30px;
+            animation: fadeIn 0.6s ease-out;
         }
 
         .cart-table {
@@ -152,7 +204,7 @@ $total_items = count($cart);
             padding: 18px 24px;
             text-align: left;
             font-weight: 600;
-            color: #4a5568;
+            color: #475569;
             font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -190,16 +242,15 @@ $total_items = count($cart);
         /* Item Details */
         .item-name {
             font-weight: 600;
-            color: #2d3748;
+            color: #1e293b;
             font-size: 17px;
             margin-bottom: 4px;
         }
 
-        .item-code {
-            color: #718096;
+        .item-type {
+            color: #64748b;
             font-size: 14px;
-            font-family: monospace;
-            background: #f7fafc;
+            background: #f1f5f9;
             padding: 4px 8px;
             border-radius: 6px;
             display: inline-block;
@@ -214,7 +265,7 @@ $total_items = count($cart);
 
         .quantity-badge {
             background: linear-gradient(135deg, #edf2f7, #e2e8f0);
-            color: #2d3748;
+            color: #1e293b;
             padding: 8px 16px;
             border-radius: 12px;
             font-weight: 700;
@@ -239,13 +290,13 @@ $total_items = count($cart);
         }
 
         .stock-available {
-            background: #c6f6d5;
-            color: #22543d;
+            background: #dcfce7;
+            color: #166534;
         }
 
         .stock-low {
-            background: #fed7d7;
-            color: #742a2a;
+            background: #fee2e2;
+            color: #b91c1c;
         }
 
         .stock-icon {
@@ -273,14 +324,14 @@ $total_items = count($cart);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #fc8181, #f56565);
+            background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
         }
 
         .btn-danger:hover {
-            background: linear-gradient(135deg, #f56565, #e53e3e);
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 101, 101, 0.3);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
         }
 
         /* Cart Footer */
@@ -294,6 +345,7 @@ $total_items = count($cart);
             align-items: center;
             flex-wrap: wrap;
             gap: 20px;
+            animation: fadeIn 0.6s ease-out;
         }
 
         .footer-buttons {
@@ -312,13 +364,13 @@ $total_items = count($cart);
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #48bb78, #38a169);
+            background: linear-gradient(135deg, #10b981, #059669);
             color: white;
         }
 
         .btn-success:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
         }
 
         .summary {
@@ -328,17 +380,24 @@ $total_items = count($cart);
         }
 
         .total-items {
-            background: #edf2f7;
+            background: #f1f5f9;
             padding: 10px 20px;
             border-radius: 12px;
             font-weight: 600;
-            color: #4a5568;
+            color: #475569;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
+            .navbar {
+                padding: 12px 20px;
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
             .container {
-                padding: 10px;
+                padding: 0 10px;
             }
 
             .header {
@@ -386,26 +445,18 @@ $total_items = count($cart);
                 width: 100%;
                 flex-direction: column;
             }
-
-            .nav-links {
-                flex-direction: column;
-                width: 100%;
-            }
-
-            .nav-btn {
-                width: 100%;
-                justify-content: center;
-            }
         }
 
         /* Animation */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .cart-container, .empty-state {
-            animation: fadeIn 0.5s ease-out;
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
         }
 
         /* Custom Scrollbar */
@@ -430,8 +481,22 @@ $total_items = count($cart);
     </style>
 </head>
 <body>
+
+    <!-- NAVBAR BARU -->
+    <div class="navbar">
+        <div class="navbar-brand">Sistem Peminjaman - User</div>
+        <div class="navbar-links">
+            <a href="user_dashboard.php">Dashboard</a>
+            <a href="barang_list.php">Daftar Barang</a>
+            <a href="cart.php">Keranjang <span class="cart-badge-nav"><?= $total_items ?></span></a>
+            <a href="my_borrowings.php">Peminjaman Saya</a>
+            <a href="user_return_selection.php">Pengembalian</a>
+            <a href="logout.php">Logout</a>
+        </div>
+    </div>
+
     <div class="container">
-        <!-- Header -->
+        <!-- Header - DIPERBAIKI: hanya cart count saja -->
         <div class="header">
             <h1>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -450,27 +515,13 @@ $total_items = count($cart);
                     </svg>
                     <?= $total_items ?> Barang
                 </div>
-                <div class="nav-links">
-                    <a href="barang_list.php" class="nav-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 5v14M5 12h14"></path>
-                        </svg>
-                        Tambah Barang
-                    </a>
-                    <a href="dashboard.php" class="nav-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                        </svg>
-                        Dashboard
-                    </a>
-                </div>
             </div>
         </div>
 
         <?php if (empty($cart)): ?>
             <!-- Empty Cart State -->
             <div class="empty-state">
-                <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#cbd5e0" stroke-width="1">
+                <svg viewBox="0 0 24 24">
                     <circle cx="9" cy="21" r="1"></circle>
                     <circle cx="20" cy="21" r="1"></circle>
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
@@ -539,7 +590,7 @@ $total_items = count($cart);
                                 <div class="action-buttons">
                                     <a href="cart_remove.php?id=<?= $c['id'] ?>" 
                                        class="btn btn-danger"
-                                       onclick="return confirm('Hapus <?= htmlspecialchars(addslashes($c['name'])) ?> dari keranjang?')">
+                                       onclick="return confirm('Hapus <?= htmlspecialchars($c['name']) ?> dari keranjang?')">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                         </svg>
@@ -582,7 +633,7 @@ $total_items = count($cart);
         // Add some interactivity
         document.addEventListener('DOMContentLoaded', function() {
             // Add click animation to buttons
-            const buttons = document.querySelectorAll('.btn, .nav-btn');
+            const buttons = document.querySelectorAll('.btn');
             buttons.forEach(button => {
                 button.addEventListener('click', function(e) {
                     this.style.transform = 'scale(0.98)';
@@ -596,8 +647,55 @@ $total_items = count($cart);
             const stockBadges = document.querySelectorAll('.stock-low');
             if (stockBadges.length > 0) {
                 console.log('Ada barang dengan stok kurang di keranjang');
+                
+                // Optional: Show an alert
+                setTimeout(() => {
+                    const warningDiv = document.createElement('div');
+                    warningDiv.style.cssText = `
+                        position: fixed;
+                        top: 100px;
+                        right: 20px;
+                        background: #fee2e2;
+                        color: #b91c1c;
+                        padding: 16px 20px;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                        z-index: 1000;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        animation: slideIn 0.3s ease-out;
+                    `;
+                    warningDiv.innerHTML = `
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Ada barang dengan stok kurang di keranjang</span>
+                    `;
+                    document.body.appendChild(warningDiv);
+                    
+                    // Remove warning after 5 seconds
+                    setTimeout(() => {
+                        warningDiv.style.animation = 'slideOut 0.3s ease-out';
+                        setTimeout(() => warningDiv.remove(), 300);
+                    }, 5000);
+                }, 1000);
             }
         });
+
+        // Add CSS for animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>

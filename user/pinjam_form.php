@@ -107,13 +107,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f8f9fa;
-            padding: 24px;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        /* NAVBAR - SAMA SEPERTI SEBELUMNYA */
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-brand {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-links a:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .navbar-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 16px;
+            right: 16px;
+            height: 2px;
+            background: white;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-links a:hover::after {
+            transform: scaleX(1);
+        }
+
+        /* Cart Badge in Navbar */
+        .cart-badge-nav {
+            background: #ff5722;
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
         }
 
         .container {
             max-width: 1000px;
-            margin: 0 auto;
+            margin: 32px auto;
+            padding: 0 32px;
         }
 
         .header {
@@ -121,13 +192,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 24px;
             border-radius: 12px;
             margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            animation: fadeIn 0.6s ease-out;
         }
 
         .header h1 {
             font-size: 24px;
             color: #1a202c;
             margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .header p {
@@ -139,8 +214,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: white;
             border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             margin-bottom: 24px;
+            animation: fadeIn 0.6s ease-out;
         }
 
         .card-title {
@@ -167,6 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 16px;
             border-radius: 8px;
             margin-bottom: 24px;
+            animation: fadeIn 0.6s ease-out;
         }
 
         .alert-error ul {
@@ -194,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .items-table th {
-            background: #f8f9fa;
+            background: #f8fafc;
             font-weight: 600;
             font-size: 14px;
             color: #64748b;
@@ -205,6 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 60px;
             object-fit: cover;
             border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         /* Form Styles */
@@ -225,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #1a202c;
+            color: #1e293b;
             font-weight: 500;
             font-size: 14px;
         }
@@ -273,6 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 13px;
             color: #0c4a6e;
             display: none;
+            animation: fadeIn 0.3s ease-out;
         }
 
         .date-info.show {
@@ -317,9 +396,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .btn-secondary:hover {
             background: #e2e8f0;
+            transform: translateY(-2px);
         }
 
+        /* Animation */
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
+            .navbar {
+                padding: 12px 20px;
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            .container {
+                padding: 0 10px;
+            }
+
             .form-grid {
                 grid-template-columns: 1fr;
             }
@@ -335,9 +439,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
+
+    <!-- NAVBAR BARU -->
+    <div class="navbar">
+        <div class="navbar-brand">Sistem Peminjaman - User</div>
+        <div class="navbar-links">
+            <a href="user_dashboard.php">Dashboard</a>
+            <a href="user_items.php">Daftar Barang</a>
+            <?php
+            // Count total items in cart
+            $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
+            ?>
+            <a href="cart.php">Keranjang <span class="cart-badge-nav"><?= $cart_count ?></span></a>
+            <a href="my_borrowings.php">Peminjaman Saya</a>
+            <a href="user_return_selection.php">Pengembalian</a>
+            <a href="logout.php">Logout</a>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
-            <h1>Form Peminjaman Barang</h1>
+            <h1>
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                </svg>
+                Form Peminjaman Barang
+            </h1>
             <p>Lengkapi informasi peminjaman Anda dengan benar</p>
         </div>
 
@@ -371,7 +498,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <tbody>
                     <?php foreach ($cart as $c): ?>
                     <tr>
-                        <td><img src="../gambar_item/<?= htmlspecialchars($c['image']) ?>" alt=""></td>
+                        <td>
+                            <?php if(!empty($c['image']) && file_exists("../gambar_item/" . $c['image'])): ?>
+                                <img src="../gambar_item/<?= htmlspecialchars($c['image']) ?>" 
+                                     alt="<?= htmlspecialchars($c['name']) ?>">
+                            <?php else: ?>
+                                <div style="width: 60px; height: 60px; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                        <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                    </svg>
+                                </div>
+                            <?php endif; ?>
+                        </td>
                         <td><strong><?= htmlspecialchars($c['name']) ?></strong></td>
                         <td><?= htmlspecialchars($c['quantity']) ?> item</td>
                     </tr>
@@ -547,6 +685,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 e.preventDefault();
                 alert('Durasi peminjaman maksimal 30 hari');
                 return false;
+            }
+        });
+
+        // Initial calculation if dates are already filled
+        document.addEventListener('DOMContentLoaded', function() {
+            if (startDate.value && endDate.value) {
+                calculateDuration();
             }
         });
     </script>

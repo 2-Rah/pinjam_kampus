@@ -38,102 +38,121 @@ $cart_count = count($_SESSION['cart']);
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 20px;
-    color: #1a202c;
+    background: #f8fafc;
+    color: #1e293b;
+    line-height: 1.6;
 }
 
-/* NAVBAR */
+/* NAVBAR - SAMA SEPERTI ADMIN */
 .navbar {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(15px);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     padding: 16px 32px;
-    border-radius: 16px;
-    margin-bottom: 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: white;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
-.navbar-title {
+.navbar-brand {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.navbar-links {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+}
+
+.navbar-links a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.navbar-links a:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.navbar-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 16px;
+    right: 16px;
+    height: 2px;
+    background: white;
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.navbar-links a:hover::after {
+    transform: scaleX(1);
+}
+
+/* ACTIVE LINK: Daftar Barang */
+.navbar-links a[href="user_items.php"]::after,
+.navbar-links a[href="user_items.php"]:hover::after {
+    transform: scaleX(1);
+}
+
+/* Cart Button (outside navbar) */
+.cart-button-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 99;
+}
+
+.cart-button {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 20px;
-    font-weight: 600;
-}
-
-.navbar-title svg {
-    width: 28px;
-    height: 28px;
-    fill: white;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-size: 15px;
-    font-weight: 500;
-}
-
-.back-btn {
-    padding: 10px 20px;
+    padding: 16px 24px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    border: none;
+    border-radius: 50px;
     font-weight: 600;
-    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
     text-decoration: none;
-    transition: .3s;
-    box-shadow: 0 4px 10px rgba(102,126,234,0.4);
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
-.back-btn:hover {
-    opacity: 0.9;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(102,126,234,0.3);
-}
-
-.cart-btn {
-    padding: 10px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    font-weight: 600;
-    border-radius: 10px;
-    text-decoration: none;
-    transition: .3s;
-    box-shadow: 0 4px 10px rgba(102,126,234,0.4);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.cart-btn:hover {
-    opacity: 0.9;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(102,126,234,0.3);
+.cart-button:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
 }
 
 .cart-badge {
     background: #ff5722;
     color: white;
-    padding: 4px 8px;
-    border-radius: 20px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    min-width: 24px;
+    text-align: center;
 }
 
 /* CONTAINER */
 .container {
     max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
+    margin: 32px auto;
+    padding: 0 32px;
 }
 
 /* HEADER */
@@ -141,7 +160,7 @@ body {
     background: white;
     padding: 28px 32px;
     border-radius: 20px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.08);
     margin-bottom: 35px;
     text-align: center;
     animation: fadeIn 0.6s ease-out;
@@ -173,14 +192,14 @@ body {
     background: white;
     border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
     transition: 0.3s ease;
     animation: fadeIn 0.6s ease-out;
 }
 
 .item-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.12);
 }
 
 .item-image-container {
@@ -470,7 +489,7 @@ body {
     padding: 60px 20px;
     background: white;
     border-radius: 20px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.08);
     grid-column: 1 / -1;
 }
 
@@ -551,6 +570,16 @@ body {
     .popup-buttons {
         flex-direction: column;
     }
+
+    .cart-button-container {
+        bottom: 20px;
+        right: 20px;
+    }
+
+    .cart-button {
+        padding: 14px 20px;
+        font-size: 15px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -561,36 +590,43 @@ body {
     .item-card {
         max-width: 100%;
     }
+
+    .cart-button {
+        padding: 12px 18px;
+        font-size: 14px;
+    }
+
+    .cart-badge {
+        font-size: 12px;
+        padding: 3px 8px;
+    }
 }
 </style>
 </head>
 <body>
 
-    <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="navbar-title">
-            <svg viewBox="0 0 24 24">
-                <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
-            </svg>
-            <span>Peminjaman Barang</span>
+    <!-- NAVBAR BARU -->
+    <div class="navbar">
+        <div class="navbar-brand">Sistem Peminjaman - User</div>
+        <div class="navbar-links">
+            <a href="user_dashboard.php">Dashboard</a>
+            <a href="user_items.php">Daftar Barang</a>
+            <a href="my_borrowings.php">Peminjaman Saya</a>
+            <a href="user_return_selection.php">Pengembalian</a>
+            <a href="logout.php">Logout</a>
         </div>
+    </div>
 
-        <div class="user-info">
-            <a href="user_dashboard.php" class="back-btn">
-                <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: white;">
-                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-                </svg>
-                Dashboard
-            </a>
-            <a href="cart.php" class="cart-btn">
-                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: white;">
-                    <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
-                </svg>
-                Keranjang
-                <span class="cart-badge"><?= $cart_count ?></span>
-            </a>
-        </div>
-    </nav>
+    <!-- TOMBOL KERANJANG (FLOATING) -->
+    <div class="cart-button-container">
+        <a href="cart.php" class="cart-button">
+            <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: white;">
+                <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+            Keranjang
+            <span class="cart-badge"><?= $cart_count ?></span>
+        </a>
+    </div>
 
     <!-- CONTENT -->
     <div class="container">
